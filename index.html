@@ -1,0 +1,2432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Caipirômetro · Río de Janeiro</title>
+<meta name="theme-color" content="#0E7A4E" />
+<meta name="description" content="Contador de caipirinhas para el viaje a Río de Janeiro." />
+
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Caipirômetro" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<style>
+  :root{
+    --bg: #F3F6EF;
+    --surface: #FFFFFF;
+    --surface-2: #EAF0E5;
+    --ink: #14201A;
+    --ink-soft: #5C6A61;
+    --ink-faint: #97A398;
+    --green: #0E7A4E;
+    --green-deep: #0A5A3A;
+    --green-tint: #E3F1E8;
+    --gold: #D9A521;
+    --gold-tint: #FBF1D9;
+    --blue: #1E4A72;
+    --blue-tint: #E7EEF4;
+    --danger: #A6402C;
+    --danger-tint: #F5E8E3;
+    --line: rgba(20,32,25,0.10);
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 11px;
+    --shadow-sheet: 0 -8px 30px rgba(20,32,25,0.14);
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+
+  html,body{ height:100%; }
+
+  body{
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .display{ font-family:'Space Grotesk', 'Inter', sans-serif; }
+
+  button, input, select{ font-family:inherit; }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--green); outline-offset:2px; }
+
+  .shell{
+    width:100%;
+    max-width:460px;
+    min-height:100vh;
+    /* padding-top respeta el notch/barra de estado del iPhone: sin esto, el
+       header (y el engranaje) quedan debajo del reloj y no se pueden tocar. */
+    padding:calc(env(safe-area-inset-top, 0px) + 4px) 16px 100px 16px;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 0 12px 0;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:38px; height:38px; border-radius:12px;
+    background:var(--green); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .brand-mark-img{ width:26px; height:26px; object-fit:contain; display:block; }
+  .brand-name{ font-family:'Space Grotesk'; font-weight:700; font-size:16px; letter-spacing:-0.2px; }
+  .brand-sub{ font-size:11.5px; color:var(--ink-soft); font-weight:500; margin-top:1px; }
+
+  .icon-btn{
+    width:38px; height:38px; border-radius:50%;
+    background:var(--surface); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--ink-soft);
+  }
+  .icon-btn svg{ width:18px; height:18px; }
+  .icon-btn:active{ background:var(--surface-2); }
+
+  /* ---------- Hero ---------- */
+  .sync-warning{
+    display:flex; align-items:flex-start; gap:9px;
+    background:var(--gold-tint); border:1px solid rgba(217,165,33,0.45);
+    border-radius:var(--radius-md); padding:11px 13px; margin-bottom:12px;
+  }
+  .sync-warning-dot{
+    width:8px; height:8px; border-radius:50%; background:var(--gold);
+    flex-shrink:0; margin-top:5px;
+  }
+  .sync-warning strong{ display:block; font-size:12.5px; color:var(--ink); margin-bottom:2px; }
+  .sync-warning span{ font-size:11.5px; color:var(--ink-soft); line-height:1.4; }
+
+  .hero{
+    background:var(--green);
+    background-image: radial-gradient(120% 100% at 15% 0%, rgba(255,255,255,0.10), transparent 55%);
+    color:#fff;
+    border-radius:var(--radius-lg);
+    padding:26px 22px 22px 22px;
+  }
+  .hero-top{ display:flex; align-items:baseline; justify-content:space-between; }
+  .hero-eyebrow{ font-size:12.5px; font-weight:600; color:rgba(255,255,255,0.78); }
+  .hero-count-wrap{ text-align:left; margin-top:8px; }
+  .hero-number{
+    font-size:76px; font-weight:700; line-height:0.95;
+    letter-spacing:-2.5px; font-variant-numeric:tabular-nums;
+  }
+  .hero-label{ font-size:13px; font-weight:500; color:rgba(255,255,255,0.85); margin-top:4px; }
+
+  .hero-progress{ margin-top:20px; }
+  .hero-progress-row{ display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; font-weight:600; margin-bottom:7px; }
+  .hero-progress-row span:first-child{ color:rgba(255,255,255,0.9); }
+  .hero-progress-row span:last-child{ color:var(--gold); font-weight:700; }
+  .track{ height:7px; background:rgba(255,255,255,0.22); border-radius:8px; overflow:hidden; }
+  .track-fill{ height:100%; background:var(--gold); border-radius:8px; width:0%; transition:width .35s ease; }
+  .hero-progress-sub{ font-size:11.5px; color:rgba(255,255,255,0.7); margin-top:7px; }
+
+  /* ---------- Actions ---------- */
+  .actions{ display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+
+  .btn-primary{
+    width:100%; min-height:52px;
+    background:var(--ink); color:#fff;
+    border:none; border-radius:var(--radius-md);
+    font-size:15px; font-weight:600;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-primary:active{ background:#0c1610; }
+
+  .btn-quiet{
+    width:100%; min-height:40px;
+    background:transparent; color:var(--ink-soft);
+    border:none; font-size:13px; font-weight:600;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .btn-quiet:active{ color:var(--ink); }
+
+  /* ---------- Stat row ---------- */
+  .stat-row{
+    display:grid; grid-template-columns:1fr 1fr 1fr;
+    margin-top:16px; background:var(--surface);
+    border:1px solid var(--line); border-radius:var(--radius-md);
+    overflow:hidden;
+  }
+  .stat-cell{ padding:13px 8px; text-align:center; border-left:1px solid var(--line); }
+  .stat-cell:first-child{ border-left:none; }
+  .stat-label{ font-size:10.5px; font-weight:600; color:var(--ink-faint); }
+  .stat-value{
+    font-family:'Space Grotesk'; font-weight:700; font-size:14px; margin-top:4px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .stat-sub{ font-size:10.5px; color:var(--ink-soft); margin-top:1px; }
+
+  /* ---------- Sections ---------- */
+  .section{ margin-top:22px; }
+  .section-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .section-title{ font-family:'Space Grotesk'; font-weight:600; font-size:14.5px; }
+  .section-link{ font-size:12.5px; font-weight:600; color:var(--green); background:none; border:none; display:flex; align-items:center; gap:2px; }
+
+  .home-feed-toggle{
+    width:100%; min-height:38px; background:none; border:none; border-top:1px solid var(--line);
+    margin-top:4px; padding-top:11px; font-size:12.5px; font-weight:700; color:var(--green);
+  }
+
+  .panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:4px 14px; }
+
+  .row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 0; border-bottom:1px solid var(--line);
+    gap:10px;
+  }
+  .row:last-child{ border-bottom:none; }
+  .row-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .row-glyph{ font-size:18px; flex-shrink:0; }
+  .row-name{ font-weight:700; font-size:13.5px; }
+  .row-name .pill-qty{
+    margin-left:6px; font-size:10.5px; font-weight:700; color:var(--green);
+    background:var(--green-tint); padding:1.5px 6px; border-radius:6px;
+  }
+  .row-meta{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .row-time{ font-size:11px; color:var(--ink-faint); font-variant-numeric:tabular-nums; flex-shrink:0; }
+
+  .empty-state{ text-align:center; padding:26px 10px; color:var(--ink-soft); font-size:12.5px; line-height:1.5; }
+  .empty-state strong{ display:block; color:var(--ink); font-size:13.5px; margin-bottom:3px; font-family:'Space Grotesk'; }
+
+  /* ---------- Tab bar ---------- */
+  .tabbar{
+    position:fixed; bottom:0; left:0; right:0;
+    max-width:460px; margin:0 auto;
+    background:rgba(255,255,255,0.92);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border-top:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-around;
+    padding:9px 10px calc(12px + env(safe-area-inset-bottom)) 10px;
+    z-index:40;
+  }
+  .tab-btn{
+    background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:4px;
+    font-size:10px; font-weight:600; color:var(--ink-faint); padding:4px 8px; min-width:52px;
+  }
+  .tab-btn svg{ width:21px; height:21px; }
+  .tab-btn.active{ color:var(--green); }
+  .fab{
+    width:50px; height:50px; border-radius:50%;
+    background:var(--ink); color:#fff; border:none;
+    display:flex; align-items:center; justify-content:center;
+    margin-top:-20px; overflow:hidden;
+    box-shadow:0 6px 16px rgba(20,32,25,0.35);
+  }
+  .fab-img{ width:30px; height:30px; object-fit:contain; display:block; }
+  .fab:active{ transform:scale(0.94); }
+
+  /* ---------- Modals / bottom sheets ---------- */
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(15,22,18,0.55);
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+    display:flex; align-items:flex-end; justify-content:center;
+    z-index:100; opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  .sheet-backdrop.open{ opacity:1; pointer-events:auto; }
+  @media (min-width:640px){ .sheet-backdrop{ align-items:center; padding:16px; } }
+
+  .sheet{
+    background:var(--surface); width:100%; max-width:460px;
+    border-radius:22px 22px 0 0; padding:20px 20px calc(20px + env(safe-area-inset-bottom)) 20px;
+    max-height:88vh; max-height:88dvh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    box-shadow:var(--shadow-sheet);
+    display:flex; flex-direction:column; gap:16px;
+    transform:translateY(16px); transition:transform .18s ease;
+  }
+  .sheet-backdrop.open .sheet{ transform:translateY(0); }
+  @media (min-width:640px){ .sheet{ border-radius:22px; } }
+
+  .sheet-head{ display:flex; justify-content:space-between; align-items:center; }
+  .sheet-title{ font-family:'Space Grotesk'; font-weight:700; font-size:16px; }
+  .sheet-close{
+    width:30px; height:30px; border-radius:50%; background:var(--surface-2); border:none;
+    display:flex; align-items:center; justify-content:center; color:var(--ink-soft);
+  }
+  .sheet-close svg{ width:14px; height:14px; }
+
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field-label{ font-size:12px; font-weight:600; color:var(--ink-soft); }
+  .field-row{ display:flex; gap:8px; }
+
+  .input, .select{
+    width:100%; background:var(--surface-2); border:1px solid transparent; border-radius:var(--radius-sm);
+    padding:11px 13px; font-size:15px; font-weight:600; color:var(--ink); outline:none;
+  }
+  .input:focus, .select:focus{ border-color:var(--green); background:var(--surface); }
+  .input::placeholder{ color:var(--ink-faint); font-weight:500; }
+
+  .stepper{ display:flex; align-items:center; gap:10px; }
+  .step-btn{
+    width:44px; height:44px; border-radius:var(--radius-sm); background:var(--surface-2); border:none;
+    font-size:18px; font-weight:700; color:var(--ink); display:flex; align-items:center; justify-content:center;
+  }
+  .step-btn:active{ background:var(--line); }
+  .step-val{
+    width:56px; height:44px; text-align:center; background:var(--surface-2); border:none; border-radius:var(--radius-sm);
+    font-size:18px; font-weight:700; color:var(--green);
+  }
+  .step-note{ font-size:11.5px; color:var(--ink-soft); }
+
+  .chip-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+  .chip-option input{ display:none; }
+  .chip{
+    background:var(--surface-2); border:1px solid transparent; border-radius:var(--radius-sm);
+    padding:9px 4px; text-align:center; font-size:11.5px; font-weight:600; color:var(--ink-soft);
+  }
+  .chip-option input:checked + .chip{ background:var(--ink); color:#fff; }
+
+  .star-row{ display:flex; gap:4px; }
+  .star-option input{ display:none; }
+  .star{ font-size:22px; color:var(--line); }
+  .star-option input:checked ~ .star, .star-option.lit .star{ color:var(--gold); }
+
+  .photo-buttons{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .photo-btn{
+    min-height:64px; background:var(--surface-2); border:1px dashed var(--ink-faint); border-radius:var(--radius-sm);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+    color:var(--ink-soft); font-size:11.5px; font-weight:600;
+  }
+  .photo-btn svg{ width:20px; height:20px; }
+  .photo-btn:active{ background:var(--line); }
+
+  .photo-preview-wrap{ position:relative; width:100%; border-radius:var(--radius-sm); overflow:hidden; }
+  .photo-preview-img{ width:100%; max-height:220px; object-fit:cover; display:block; background:var(--surface-2); }
+  .photo-remove-btn{
+    position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%;
+    background:rgba(20,32,25,0.65); color:#fff; border:none; display:flex; align-items:center; justify-content:center;
+  }
+  .photo-remove-btn svg{ width:13px; height:13px; }
+  .photo-hint{ font-size:10.5px; color:var(--ink-faint); margin-top:6px; line-height:1.4; }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+  /* ---------- Ranking view ---------- */
+  .podium{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; align-items:end; margin:6px 0 4px 0; }
+  .podium-col{ text-align:center; }
+  .podium-name{ font-size:12px; font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .podium-bar{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px 14px 0 0;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:10px 4px; gap:2px;
+  }
+  .podium-bar.rank-1{ height:96px; border-top:3px solid var(--gold); }
+  .podium-bar.rank-2{ height:74px; border-top:3px solid var(--ink-faint); }
+  .podium-bar.rank-3{ height:58px; border-top:3px solid #C77F3E; }
+  .podium-rank{ font-family:'Space Grotesk'; font-size:11px; font-weight:700; color:var(--ink-faint); }
+  .podium-count{ font-family:'Space Grotesk'; font-size:15px; font-weight:700; }
+
+  .rank-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:11px 0; border-bottom:1px solid var(--line);
+  }
+  .rank-row:last-child{ border-bottom:none; }
+  .rank-row-left{ display:flex; align-items:center; gap:11px; }
+  .rank-num{ font-family:'Space Grotesk'; font-weight:700; font-size:12.5px; color:var(--ink-faint); width:18px; }
+  .rank-name{ font-weight:700; font-size:13.5px; }
+  .rank-spend{ font-size:11px; color:var(--ink-soft); margin-top:1px; }
+  .rank-count{ font-family:'Space Grotesk'; font-weight:700; font-size:15px; color:var(--green); text-align:right; }
+  .rank-count-label{ font-size:9.5px; color:var(--ink-faint); font-weight:600; text-align:right; }
+
+  /* ---------- Stats view ---------- */
+  .award-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .award-card{ background:var(--surface-2); border-radius:var(--radius-sm); padding:12px; }
+  .award-label{ font-size:11px; font-weight:600; color:var(--ink-soft); display:flex; align-items:center; gap:5px; }
+  .award-name{ font-family:'Space Grotesk'; font-weight:700; font-size:14px; margin-top:5px; color:var(--green-deep); }
+  .award-sub{ font-size:10.5px; color:var(--ink-faint); margin-top:1px; }
+
+  .bar-row{ display:flex; align-items:center; gap:9px; margin-bottom:11px; }
+  .bar-row:last-child{ margin-bottom:0; }
+  .bar-label{ width:78px; font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+  .bar-track{ flex:1; height:9px; background:var(--surface-2); border-radius:6px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--green); border-radius:6px; }
+  .bar-val{ width:26px; text-align:right; font-family:'Space Grotesk'; font-weight:700; font-size:12px; color:var(--green); flex-shrink:0; }
+
+  /* ---------- History view ---------- */
+  .history-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; gap:10px; }
+  .history-title{ font-family:'Space Grotesk'; font-weight:700; font-size:17px; }
+  .history-sub{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+
+  .entry{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:13px 14px; }
+  .entry-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .entry-who{ display:flex; align-items:center; gap:8px; }
+  .entry-name{ font-size:13.5px; font-weight:700; }
+  .entry-right{ display:flex; align-items:center; gap:8px; }
+  .entry-time{ font-size:10.5px; color:var(--ink-faint); font-variant-numeric:tabular-nums; }
+  .entry-del{ background:none; border:none; color:var(--ink-faint); width:26px; height:26px; display:flex; align-items:center; justify-content:center; }
+  .entry-del svg{ width:15px; height:15px; }
+  .entry-tags{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+  .tag{ font-size:10.5px; font-weight:600; color:var(--ink-soft); background:var(--surface-2); padding:3px 8px; border-radius:6px; }
+  .tag.money{ color:var(--green-deep); background:var(--green-tint); }
+  .entry-note{
+    margin-top:9px; font-size:11.5px; color:var(--ink-soft); font-style:italic;
+    background:var(--surface-2); padding:8px 10px; border-radius:8px; border-left:3px solid var(--green);
+  }
+
+  /* ---------- Settings ---------- */
+  .friend-chip{
+    display:inline-flex; align-items:center; gap:5px; background:var(--surface-2);
+    padding:6px 6px 6px 11px; border-radius:20px; font-size:12px; font-weight:700;
+  }
+  .friend-chip button{ background:none; border:none; width:18px; height:18px; color:var(--ink-faint); display:flex; align-items:center; justify-content:center; }
+  .friend-chip button svg{ width:11px; height:11px; }
+
+  .sync-box{ background:var(--surface-2); border-radius:var(--radius-md); padding:14px; }
+  .sync-box-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .sync-box-title{ font-size:12px; font-weight:700; color:var(--green-deep); }
+  .sync-badge{ font-size:10px; font-weight:700; background:var(--surface); padding:3px 9px; border-radius:20px; }
+  .sync-box-desc{ font-size:11.5px; color:var(--ink-soft); margin-bottom:9px; line-height:1.4; }
+
+  .link-danger{ background:none; border:none; color:var(--danger); font-size:12px; font-weight:700; padding:6px 0; text-align:left; }
+
+  input[type="file"]{ display:none; }
+
+  /* ---------- Goal celebration ---------- */
+  .goal-overlay{
+    position:fixed; inset:0; background:rgba(10,16,12,0.92);
+    z-index:200; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:26px; text-align:center; color:#fff; opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .goal-overlay.open{ opacity:1; pointer-events:auto; }
+  .goal-kick{ font-size:56px; }
+  .goal-title{ font-family:'Space Grotesk'; font-size:38px; font-weight:700; color:var(--gold); margin:10px 0 2px 0; letter-spacing:-1px; }
+  .goal-tag{ font-size:12.5px; font-weight:600; color:rgba(255,255,255,0.75); }
+  .goal-box{
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16);
+    border-radius:20px; padding:20px; width:100%; max-width:280px; margin:22px 0;
+  }
+  .goal-box-label{ font-size:10.5px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:0.5px; }
+  .goal-box-number{ font-family:'Space Grotesk'; font-size:52px; font-weight:700; margin:4px 0; }
+  .goal-box-author{ font-size:13px; color:rgba(255,255,255,0.85); }
+  .goal-box-author strong{ color:var(--gold); }
+
+  /* ---------- Lightbox ---------- */
+  .lightbox-overlay{
+    position:fixed; inset:0; background:rgba(8,12,10,0.94);
+    z-index:250; display:flex; align-items:center; justify-content:center;
+    padding:20px; opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  .lightbox-overlay.open{ opacity:1; pointer-events:auto; }
+  .lightbox-img{ max-width:100%; max-height:100%; border-radius:14px; object-fit:contain; }
+  .lightbox-close{
+    position:absolute; top:calc(16px + env(safe-area-inset-top)); right:16px;
+    width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.14); color:#fff; border:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .lightbox-close svg{ width:16px; height:16px; }
+  .lightbox-footer{
+    position:absolute; left:0; right:0; bottom:0; padding:16px 18px calc(18px + env(safe-area-inset-bottom)) 18px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .lightbox-caption{ color:rgba(255,255,255,0.85); font-size:12.5px; font-weight:600; text-align:center; }
+  .lightbox-delete{
+    display:flex; align-items:center; gap:6px; background:rgba(166,64,44,0.9); color:#fff; border:none;
+    border-radius:30px; padding:10px 18px; font-size:12.5px; font-weight:700;
+  }
+  .lightbox-delete svg{ width:14px; height:14px; }
+
+  /* ---------- Photo thumbnails in cards/rows ---------- */
+  .row-photo-badge{ font-size:11px; margin-left:4px; }
+  .entry-photo{
+    width:100%; max-height:200px; object-fit:cover; border-radius:12px; margin-top:9px; display:block; cursor:pointer;
+  }
+
+  /* ---------- Galería ---------- */
+  .gallery-grid{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;
+  }
+  .gallery-tile{
+    position:relative; aspect-ratio:1 / 1; border-radius:12px; overflow:hidden;
+    background:var(--surface-2); cursor:pointer;
+  }
+  .gallery-tile img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .gallery-tile .gallery-tile-meta{
+    position:absolute; left:0; right:0; bottom:0; padding:5px 44px 6px 7px;
+    background:linear-gradient(to top, rgba(8,14,10,0.72), rgba(8,14,10,0));
+    color:#fff; font-size:10px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  .like-btn{
+    position:absolute; right:5px; bottom:5px;
+    display:flex; align-items:center; gap:3px;
+    background:rgba(8,14,10,0.55); border:none; border-radius:20px;
+    padding:4px 8px 4px 6px; color:#fff;
+    -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+  }
+  .like-btn svg{ width:14px; height:14px; }
+  .like-btn.liked{ color:#FF5A6E; }
+  .like-btn .like-count{ font-size:11px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+  .like-btn:active{ transform:scale(0.9); }
+  .like-btn.pop{ animation:likePop .32s ease; }
+  @keyframes likePop{
+    0%{ transform:scale(1); }
+    45%{ transform:scale(1.28); }
+    100%{ transform:scale(1); }
+  }
+
+  /* corazón dentro del lightbox */
+  .lightbox-like{
+    display:flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,0.14); border:none; border-radius:30px;
+    padding:10px 18px; color:#fff; font-size:13px; font-weight:700;
+  }
+  .lightbox-like svg{ width:17px; height:17px; }
+  .lightbox-like.liked{ color:#FF5A6E; }
+  .lightbox-actions{ display:flex; align-items:center; gap:8px; }
+
+  /* ---------- Confirm sheet ---------- */
+  .confirm-msg{ font-size:13.5px; color:var(--ink-soft); line-height:1.5; }
+  .confirm-actions{ display:flex; gap:8px; }
+  .confirm-actions button{ flex:1; min-height:46px; border-radius:var(--radius-sm); border:none; font-size:13.5px; font-weight:700; }
+  .confirm-cancel{ background:var(--surface-2); color:var(--ink); }
+  .confirm-ok{ background:var(--danger); color:#fff; }
+  .confirm-ok.neutral{ background:var(--ink); }
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed; left:50%; bottom:96px; transform:translate(-50%,10px);
+    background:var(--ink); color:#fff; font-size:12.5px; font-weight:600;
+    padding:11px 18px; border-radius:30px; z-index:300; opacity:0; pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease; white-space:nowrap;
+  }
+  .toast.open{ opacity:1; transform:translate(-50%,0); }
+
+  .hidden{ display:none !important; }
+
+  /* ---------- Portón de entrada (gracioso, no es seguridad de verdad) ---------- */
+  .gate-overlay{
+    position:fixed; inset:0; z-index:500;
+    background:linear-gradient(160deg, var(--green) 0%, var(--green-deep) 100%);
+    display:flex; align-items:center; justify-content:center;
+    padding:calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px)) 24px;
+    overflow-y:auto;
+  }
+  .gate-card{
+    background:var(--surface); border-radius:28px; padding:34px 26px 28px 26px;
+    width:100%; max-width:360px; text-align:center;
+    box-shadow:0 24px 60px rgba(8,14,10,0.35);
+  }
+  .gate-emoji{ font-size:38px; margin-bottom:10px; }
+  .gate-title{ font-family:'Space Grotesk'; font-size:23px; font-weight:700; color:var(--ink); letter-spacing:-0.3px; }
+  .gate-sub{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; margin-bottom:22px; line-height:1.45; }
+  .gate-form{ display:flex; flex-direction:column; gap:10px; }
+  .gate-input-wrap{ position:relative; }
+  .gate-input{
+    width:100%; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--radius-sm);
+    padding:13px 44px 13px 16px; font-size:16px; font-weight:700; color:var(--ink); outline:none;
+    text-align:center; letter-spacing:1px;
+  }
+  .gate-input:focus{ border-color:var(--green); background:var(--surface); }
+  .gate-eye{
+    position:absolute; right:5px; top:50%; transform:translateY(-50%);
+    width:34px; height:34px; border-radius:50%; background:none; border:none; font-size:16px; color:var(--ink-soft);
+  }
+  .gate-submit{
+    min-height:50px; background:var(--ink); color:#fff; border:none; border-radius:var(--radius-sm);
+    font-size:15px; font-weight:700;
+  }
+  .gate-submit:active{ background:#0c1610; }
+  .gate-error{ margin-top:14px; font-size:12.5px; font-weight:600; color:var(--danger); }
+  .gate-card.shake{ animation:gateShake 0.4s ease; }
+  @keyframes gateShake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-9px); }
+    40%{ transform:translateX(9px); }
+    60%{ transform:translateX(-6px); }
+    80%{ transform:translateX(6px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- PORTÓN DE ENTRADA -->
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card">
+    <div class="gate-emoji">🍹🇧🇷</div>
+    <div class="gate-title">Bienvenido al viaje</div>
+    <div class="gate-sub">Ingresá la contraseña secreta del grupo para entrar</div>
+    <form id="gateForm" class="gate-form">
+      <div class="gate-input-wrap">
+        <input type="password" id="gatePasswordInput" class="gate-input" placeholder="Contraseña" autocomplete="off" inputmode="text" />
+        <button type="button" class="gate-eye" id="gateTogglePw" aria-label="Mostrar contraseña">👁️</button>
+      </div>
+      <button type="submit" class="gate-submit">Entrar</button>
+    </form>
+    <div class="gate-error hidden" id="gateError">Nop, esa no es 😅 probá de nuevo</div>
+  </div>
+</div>
+<script>
+(function(){
+  "use strict";
+  // 👉 Cambiá esta contraseña por la que quieras antes de deployar.
+  var GATE_PASSWORD = "F5 en Copa";
+  var GATE_KEY = "caipirometro_rio_gate_unlocked_v1";
+
+  function isUnlocked(){
+    try{ return localStorage.getItem(GATE_KEY) === "yes"; }catch(e){ return false; }
+  }
+  function markUnlocked(){
+    try{ localStorage.setItem(GATE_KEY, "yes"); }catch(e){}
+  }
+  function hideGate(){
+    var overlay = document.getElementById("gateOverlay");
+    if(overlay) overlay.style.display = "none";
+  }
+
+  // Chequeo inmediato (no espera a DOMContentLoaded) para que a quien ya entró
+  // antes no le parpadee el portón en cada visita.
+  if(isUnlocked()) hideGate();
+
+  document.addEventListener("DOMContentLoaded", function(){
+    var form = document.getElementById("gateForm");
+    var input = document.getElementById("gatePasswordInput");
+    var error = document.getElementById("gateError");
+    var card = document.querySelector(".gate-card");
+    var eyeBtn = document.getElementById("gateTogglePw");
+    if(!form) return;
+
+    if(eyeBtn){
+      eyeBtn.addEventListener("click", function(){
+        input.type = input.type === "password" ? "text" : "password";
+        input.focus();
+      });
+    }
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var val = (input.value || "").trim().toLowerCase();
+      if(val && val === GATE_PASSWORD.trim().toLowerCase()){
+        markUnlocked();
+        hideGate();
+      } else {
+        if(error) error.classList.remove("hidden");
+        if(card){
+          card.classList.remove("shake");
+          void card.offsetWidth;
+          card.classList.add("shake");
+        }
+        input.value = "";
+        input.focus();
+      }
+    });
+  });
+})();
+</script>
+
+<div class="shell">
+
+  <!-- HEADER -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img src="glass-icon.png" alt="" class="brand-mark-img" /></div>
+      <div>
+        <div class="brand-name">Caipirômetro</div>
+        <div class="brand-sub" id="tripSubtitle">Río de Janeiro</div>
+      </div>
+    </div>
+    <button type="button" class="icon-btn" id="btnOpenSettings" aria-label="Configuración">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+    </button>
+  </header>
+
+  <!-- VIEW: HOME -->
+  <main id="view-home">
+    <div class="sync-warning hidden" id="syncWarningBanner">
+      <span class="sync-warning-dot"></span>
+      <div>
+        <strong>Sin sincronizar</strong>
+        <span>Este celular lleva su propia cuenta. Lo que anotes acá no lo ven los demás.</span>
+      </div>
+    </div>
+    <section class="hero">
+      <div class="hero-top">
+        <span class="hero-eyebrow">Contador del grupo</span>
+      </div>
+      <div class="hero-count-wrap">
+        <div class="hero-number display" id="totalCounterDisplay">0</div>
+        <div class="hero-label">caipirinhas tomadas</div>
+      </div>
+      <div class="hero-progress">
+        <div class="hero-progress-row">
+          <span>Próximo gol: <span id="nextGoalLabel">10</span></span>
+          <span id="goalProgressPercent">0%</span>
+        </div>
+        <div class="track"><div class="track-fill" id="goalProgressBar"></div></div>
+        <div class="hero-progress-sub" id="goalRemainingText">Faltan 10 para el próximo gol</div>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button type="button" class="btn-primary" id="btnOpenAdd">
+        <span>+</span><span>Anotar caipirinha</span>
+      </button>
+      <button type="button" class="btn-quiet" id="btnOpenQuickRound">
+        <span>Ronda grupal rápida</span>
+      </button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-cell">
+        <div class="stat-label">Líder</div>
+        <div class="stat-value" id="topDrinkerName">–</div>
+        <div class="stat-sub" id="topDrinkerCount">0 caipis</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Spot favorito</div>
+        <div class="stat-value" id="topLocationName">–</div>
+        <div class="stat-sub" id="topLocationCount">–</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Inversión</div>
+        <div class="stat-value" id="totalSpendReales">R$ 0</div>
+        <div class="stat-sub" id="totalSpendPerPerson">R$ 0 / persona</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Últimas rondas</div>
+        <button type="button" class="section-link" data-tab="home-gallery-link">Ver fotos</button>
+      </div>
+      <div class="panel" id="homeRecentList"></div>
+    </div>
+  </main>
+
+  <!-- VIEW: RANKING -->
+  <main id="view-ranking" class="hidden">
+    <div style="text-align:center; margin-bottom:16px;">
+      <div class="section-title" style="font-size:17px;">Ranking del viaje</div>
+      <div class="row-meta">Quién va ganando</div>
+    </div>
+
+    <div class="podium" id="podiumWrap">
+      <div class="podium-col">
+        <div class="podium-name" id="podium2Name">–</div>
+        <div class="podium-bar rank-2"><div class="podium-rank">2</div><div class="podium-count" id="podium2Count">0</div></div>
+      </div>
+      <div class="podium-col">
+        <div class="podium-name" id="podium1Name">–</div>
+        <div class="podium-bar rank-1"><div class="podium-rank">1</div><div class="podium-count" id="podium1Count" style="color:var(--green-deep);">0</div></div>
+      </div>
+      <div class="podium-col">
+        <div class="podium-name" id="podium3Name">–</div>
+        <div class="podium-bar rank-3"><div class="podium-rank">3</div><div class="podium-count" id="podium3Count">0</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Todos</div></div>
+      <div class="panel" id="leaderboardFullList"></div>
+    </div>
+  </main>
+
+  <!-- VIEW: STATS -->
+  <main id="view-stats" class="hidden">
+    <div style="text-align:center; margin-bottom:16px;">
+      <div class="section-title" style="font-size:17px;">Estadísticas</div>
+      <div class="row-meta">El resumen del viaje</div>
+    </div>
+
+    <div class="section" style="margin-top:0;">
+      <div class="section-head"><div class="section-title">Premios</div></div>
+      <div class="award-grid" id="awardsGrid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Caipirinhas por persona</div></div>
+      <div class="panel" style="padding:14px;" id="chartDrinkerContainer"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Lugares más visitados</div></div>
+      <div class="panel" style="padding:14px;" id="chartLocationContainer"></div>
+    </div>
+  </main>
+
+  <!-- VIEW: GALLERY -->
+  <main id="view-gallery" class="hidden">
+    <div style="text-align:center; margin-bottom:16px;">
+      <div class="section-title" style="font-size:17px;">Galería</div>
+      <div class="row-meta">Todas las fotos del viaje</div>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </main>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- TAB BAR -->
+<nav class="tabbar">
+  <button type="button" class="tab-btn active" data-tab="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+    <span>Inicio</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="ranking">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4a1 1 0 0 0-1 1 4 4 0 0 0 4 4M17 6h3a1 1 0 0 1 1 1 4 4 0 0 1-4 4"/></svg>
+    <span>Ranking</span>
+  </button>
+  <button type="button" class="fab" id="btnOpenAddFab" aria-label="Anotar caipirinha"><img src="glass-icon.png" alt="" class="fab-img" /></button>
+  <button type="button" class="tab-btn" data-tab="stats">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+    <span>Stats</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="gallery">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 15.5 8 11a1.6 1.6 0 0 1 2.3 0l3.7 3.7M13.5 13.5 15 12a1.6 1.6 0 0 1 2.3 0l2.2 2.2"/><circle cx="8.2" cy="8.2" r="1.4"/></svg>
+    <span>Galería</span>
+  </button>
+</nav>
+
+<!-- SHEET: ANOTAR CAIPIRINHA -->
+<div class="sheet-backdrop" id="addSheet">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-title">Anotar caipirinha</div>
+      <button type="button" class="sheet-close" data-close="addSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+
+    <form id="caipiForm">
+      <div class="field">
+        <label class="field-label" for="formFriendSelect">¿Quién se la tomó?</label>
+        <div class="field-row">
+          <select id="formFriendSelect" class="select" required></select>
+          <button type="button" class="step-btn" style="width:44px; background:var(--ink); color:#fff;" id="btnAddFriendInline">+</button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label class="field-label">Cantidad</label>
+        <div class="stepper">
+          <button type="button" class="step-btn" data-qty="-1">–</button>
+          <input type="number" id="formQty" class="step-val" value="1" min="1" max="30" />
+          <button type="button" class="step-btn" data-qty="1">+</button>
+          <span class="step-note">caipis en esta ronda</span>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label class="field-label">¿Dónde?</label>
+        <div class="chip-grid">
+          <label class="chip-option"><input type="radio" name="placeType" value="Playa" checked /><div class="chip">🏖️ Playa</div></label>
+          <label class="chip-option"><input type="radio" name="placeType" value="Boliche / Fiesta" /><div class="chip">🪩 Boliche</div></label>
+          <label class="chip-option"><input type="radio" name="placeType" value="Restó / Bar" /><div class="chip">🍽️ Restó</div></label>
+          <label class="chip-option"><input type="radio" name="placeType" value="Calle / Quiosque" /><div class="chip">🥥 Quiosque</div></label>
+          <label class="chip-option"><input type="radio" name="placeType" value="Alojamiento" /><div class="chip">🏠 Alojam.</div></label>
+          <label class="chip-option"><input type="radio" name="placeType" value="Excursión" /><div class="chip">⛵ Excursión</div></label>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:14px;">
+        <div class="field">
+          <label class="field-label" for="formCity">Barrio / ciudad</label>
+          <input type="text" id="formCity" list="cityList" placeholder="Ipanema…" class="input" />
+          <datalist id="cityList">
+            <option value="Copacabana"><option value="Ipanema"><option value="Leblon">
+            <option value="Barra da Tijuca"><option value="Lapa"><option value="Botafogo">
+            <option value="Santa Teresa"><option value="Arpoador"><option value="Niterói">
+            <option value="Búzios"><option value="Ilha Grande"><option value="Paraty">
+          </datalist>
+        </div>
+        <div class="field">
+          <label class="field-label" for="formPrice">Precio (R$)</label>
+          <input type="number" id="formPrice" placeholder="20" min="0" class="input" style="color:var(--green-deep);" />
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label class="field-label">Calidad</label>
+        <div class="star-row" id="starRow">
+          <label class="star-option lit" data-val="1"><input type="radio" name="rating" value="1" /><span class="star">★</span></label>
+          <label class="star-option lit" data-val="2"><input type="radio" name="rating" value="2" /><span class="star">★</span></label>
+          <label class="star-option lit" data-val="3"><input type="radio" name="rating" value="3" /><span class="star">★</span></label>
+          <label class="star-option lit" data-val="4"><input type="radio" name="rating" value="4" /><span class="star">★</span></label>
+          <label class="star-option lit" data-val="5"><input type="radio" name="rating" value="5" checked /><span class="star">★</span></label>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label class="field-label">Foto (opcional)</label>
+        <div class="photo-buttons" id="photoButtons">
+          <button type="button" class="photo-btn" id="btnTakePhoto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.2a1 1 0 0 0 .8-.4l.8-1.2a1 1 0 0 1 .8-.4h4.8a1 1 0 0 1 .8.4l.8 1.2a1 1 0 0 0 .8.4H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/><circle cx="12" cy="13" r="3.3"/></svg>
+            <span>Sacar foto</span>
+          </button>
+          <button type="button" class="photo-btn" id="btnPickPhoto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m5 17 4.5-4.8a1.6 1.6 0 0 1 2.3-.05L15 15.2M14.2 13.8l1.6-1.7a1.6 1.6 0 0 1 2.3-.02L20.5 14.5"/></svg>
+            <span>Elegir de galería</span>
+          </button>
+        </div>
+        <div class="photo-preview-wrap hidden" id="photoPreviewWrap">
+          <img id="photoPreviewImg" class="photo-preview-img" alt="Foto de la caipirinha" />
+          <button type="button" class="photo-remove-btn" id="btnRemovePhoto" aria-label="Quitar foto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="photo-hint" id="photoHint"></div>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" />
+        <input type="file" id="galleryInput" accept="image/*" />
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label class="field-label" for="formNote">Anécdota (opcional)</label>
+        <input type="text" id="formNote" placeholder="En el quiosque del posto 9…" class="input" />
+      </div>
+
+      <button type="submit" class="btn-primary" style="margin-top:18px;">Confirmar</button>
+    </form>
+  </div>
+</div>
+
+<!-- SHEET: RONDA RÁPIDA -->
+<div class="sheet-backdrop" id="quickSheet">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-title">Ronda grupal rápida</div>
+      <button type="button" class="sheet-close" data-close="quickSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field-label" style="font-weight:500; color:var(--ink-soft);">Para cuando alguien paga o pide varias de una. Queda anotado como Playa, sin precio ni notas — si te equivocás, la podés borrar desde el ícono del tachito en "Últimas rondas".</div>
+    <div class="field">
+      <label class="field-label" for="quickFriendSelect">¿Quién pidió la ronda?</label>
+      <select id="quickFriendSelect" class="select"></select>
+    </div>
+    <div class="field">
+      <label class="field-label">¿Cuántas caipirinhas en total?</label>
+      <div class="stepper">
+        <button type="button" class="step-btn" data-qty-quick="-1">–</button>
+        <input type="number" id="quickQty" class="step-val" value="4" min="1" max="40" />
+        <button type="button" class="step-btn" data-qty-quick="1">+</button>
+      </div>
+    </div>
+    <button type="button" class="btn-primary" id="btnConfirmQuick">Sumar a la cuenta</button>
+  </div>
+</div>
+
+<!-- SHEET: AGREGAR AMIGO -->
+<div class="sheet-backdrop" id="friendSheet">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-title">Agregar amigo</div>
+      <button type="button" class="sheet-close" data-close="friendSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field">
+      <label class="field-label" for="newFriendName">Nombre o apodo</label>
+      <input type="text" id="newFriendName" class="input" placeholder="Ej: Facu" />
+    </div>
+    <button type="button" class="btn-primary" id="btnConfirmAddFriend">Agregar</button>
+  </div>
+</div>
+
+<!-- SHEET: CONFIGURACIÓN -->
+<div class="sheet-backdrop" id="settingsSheet">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-title">Configuración</div>
+      <button type="button" class="sheet-close" data-close="settingsSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+
+    <div class="field">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <label class="field-label">Amigos del viaje</label>
+        <button type="button" class="section-link" id="btnOpenAddFriendFromSettings">+ agregar</button>
+      </div>
+      <div id="configFriendsList" style="display:flex; flex-wrap:wrap; gap:7px; margin-top:2px;"></div>
+    </div>
+
+    <div class="sync-box">
+      <div class="sync-box-head">
+        <span class="sync-box-title">Sincronización en vivo</span>
+        <span class="sync-badge" id="firebaseStatusBadge">Modo local</span>
+      </div>
+      <p class="sync-box-desc">Si ya dejaste la URL de Firebase cargada en el código antes de publicar, esto ya está andando solo para todo el grupo — no hace falta tocar nada acá. Este campo es solo para apuntar este celular a otra base, si hiciera falta.</p>
+      <input type="text" id="firebaseDbUrl" placeholder="https://tu-viaje.firebaseio.com" class="input" style="font-size:12.5px; margin-bottom:9px;" />
+      <button type="button" class="btn-primary" id="btnSaveFirebase" style="min-height:42px; font-size:13px;">Guardar conexión</button>
+      <div class="sync-box-head" style="margin-top:14px; margin-bottom:0;">
+        <span class="sync-box-title">Fotos compartidas</span>
+        <span class="sync-badge" id="photoBackendBadge">—</span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <button type="button" class="btn-quiet" style="background:var(--surface-2); border-radius:var(--radius-sm); min-height:42px;" id="btnExportJson">Descargar backup</button>
+      <button type="button" class="btn-quiet" style="background:var(--surface-2); border-radius:var(--radius-sm); min-height:42px;" id="btnImportJson">Restaurar backup</button>
+    </div>
+    <input type="file" id="importFileInput" accept="application/json" />
+
+    <button type="button" class="link-danger" id="btnResetData">Reiniciar contador a cero</button>
+  </div>
+</div>
+
+<!-- SHEET: CONFIRMACIÓN GENÉRICA -->
+<div class="sheet-backdrop" id="confirmSheet">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-title" id="confirmTitle">Confirmar</div>
+    </div>
+    <div class="confirm-msg" id="confirmMessage"></div>
+    <div class="confirm-actions">
+      <button type="button" class="confirm-cancel" id="confirmCancelBtn">Cancelar</button>
+      <button type="button" class="confirm-ok" id="confirmOkBtn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- GOAL CELEBRATION -->
+<div class="goal-overlay" id="goalOverlay">
+  <div class="goal-kick">⚽</div>
+  <div class="goal-title display">¡GOOOL!</div>
+  <div class="goal-tag">DO BRASIL 🇧🇷</div>
+  <div class="goal-box">
+    <div class="goal-box-label">Caipirinha histórica</div>
+    <div class="goal-box-number display" id="goalNumberReached">#10</div>
+    <div class="goal-box-author" id="goalAuthorText"></div>
+  </div>
+  <button type="button" class="btn-primary" style="max-width:240px; background:var(--gold); color:var(--ink);" id="btnCloseGoal">Seguir festejando</button>
+</div>
+
+<!-- LIGHTBOX: FOTO EN GRANDE -->
+<div class="lightbox-overlay" id="photoLightbox">
+  <button type="button" class="lightbox-close" id="btnCloseLightbox" aria-label="Cerrar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  </button>
+  <img id="lightboxImg" class="lightbox-img" alt="Foto de la caipirinha" />
+  <div class="lightbox-footer">
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+    <div class="lightbox-actions">
+      <button type="button" class="lightbox-like" id="btnLightboxLike" data-action="toggle-like" data-id="">
+        <span id="lightboxHeart"></span>
+        <span id="lightboxLikeCount">0</span>
+      </button>
+      <button type="button" class="lightbox-delete" id="btnDeleteLightboxPhoto" data-action="delete-log" data-id="">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0-.8 13.2A2 2 0 0 1 15.2 21H8.8a2 2 0 0 1-2-1.8L6 6"/></svg>
+        <span>Borrar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "caipirometro_rio_state_v2";
+  // Las fotos viven en SU PROPIA llave, separadas del estado sincronizado.
+  // Motivo: la sync reemplaza state.logs con la copia del servidor, que no
+  // trae las fotos locales — si vivieran adentro de los logs, cada sync las borraría.
+  var PHOTOS_KEY = "caipirometro_rio_photos_v1";
+  // Likes: cada celular escribe SU PROPIA marca bajo /viaje/likes/{logId}/{deviceId}.
+  // Así dos amigos que tocan el corazón al mismo tiempo no se pisan (cada uno
+  // escribe una llave distinta) y el número sale de contar las marcas.
+  var LIKES_KEY = "caipirometro_rio_likes_v1";
+  var DEVICE_KEY = "caipirometro_rio_device_v1";
+
+  // 👉 Pegá acá la URL de tu Firebase Realtime Database antes de deployar a Vercel.
+  // Ej: "https://tu-viaje-default-rtdb.firebaseio.com/"
+  // Con esto seteado, CUALQUIERA que abra el link ya sincroniza solo, sin tocar nada.
+  var DEFAULT_FIREBASE_URL = "https://caipirometro-rio-default-rtdb.firebaseio.com/";
+
+  // 👉 Cloudinary: acá se suben las fotos para que las vea TODO el grupo.
+  // Son datos públicos a propósito (el preset es "unsigned", pensado para esto).
+  // NUNCA pongas acá el API Secret de Cloudinary.
+  var CLOUDINARY_CLOUD_NAME = "rcaxwwuf";
+  var CLOUDINARY_UPLOAD_PRESET = "BR_Caipirometro";
+
+  var DEFAULT_FRIENDS = ["Facu", "Nico", "Santi", "Agus", "Mati", "Lucas", "Gonza"];
+
+  var PLACE_EMOJI = {
+    "Playa": "🏖️",
+    "Boliche / Fiesta": "🪩",
+    "Restó / Bar": "🍽️",
+    "Calle / Quiosque": "🥥",
+    "Alojamiento": "🏠",
+    "Excursión": "⛵"
+  };
+
+  var state = {
+    friends: DEFAULT_FRIENDS.slice(),
+    logs: [],
+    goalMilestones: [10,20,30,40,50,75,100,150,200],
+    firebaseUrl: ""
+  };
+
+  var audioCtx = null;
+  var pendingConfirmAction = null;
+  var toastTimer = null;
+  var pendingPhoto = null; // { dataUrl, blob } — foto elegida en el form, todavía no guardada
+  var localPhotos = {};    // { logId: dataUrl } — fotos guardadas en ESTE celular
+  var likesData = {};      // { logId: { deviceId: true } }
+  var deviceId = "";       // id anónimo de este celular (solo para contar likes)
+
+  // Firebase sync runtime vars
+  var fbBase = "";               // normalized DB root, e.g. "https://x.firebaseio.com/"
+  var fbLogsStream = null;       // EventSource for logs
+  var fbFriendsStream = null;    // EventSource for friends
+  var fbLikesStream = null;      // EventSource for likes
+  var fbFallbackPoll = null;     // safety-net setInterval
+  var fbSuppressNextLocalPush = false;
+
+  // ---------------- Storage ----------------
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.friends) && parsed.friends.length) state.friends = parsed.friends;
+        if(parsed && Array.isArray(parsed.logs)) state.logs = parsed.logs;
+        if(parsed && parsed.firebaseUrl) state.firebaseUrl = parsed.firebaseUrl;
+      }
+    }catch(err){ console.warn("No se pudo leer el almacenamiento local", err); }
+
+    loadLocalPhotos();
+    initDeviceId();
+    loadLocalLikes();
+
+    // Migración: si venís de una versión anterior donde la foto vivía adentro
+    // del log, la movemos al almacén separado para que no se pierda.
+    var migrated = false;
+    state.logs.forEach(function(l){
+      if(l.photo && l.photo.indexOf("data:") === 0){
+        localPhotos[l.id] = l.photo;
+        delete l.photo;
+        migrated = true;
+      }
+    });
+    if(migrated){ persistLocalPhotos(); }
+
+    // Si el archivo trae una URL de fábrica y este navegador todavía no tiene
+    // ninguna guardada, la adopta sola: así cualquiera que abra el link ya
+    // queda sincronizado sin tocar Configuración.
+    if(!state.firebaseUrl && DEFAULT_FIREBASE_URL){
+      state.firebaseUrl = DEFAULT_FIREBASE_URL;
+    }
+  }
+
+  function loadLocalPhotos(){
+    try{
+      var raw = localStorage.getItem(PHOTOS_KEY);
+      localPhotos = raw ? (JSON.parse(raw) || {}) : {};
+    }catch(err){
+      console.warn("No se pudieron leer las fotos locales", err);
+      localPhotos = {};
+    }
+  }
+
+  // ---------------- Likes ----------------
+  function initDeviceId(){
+    try{
+      deviceId = localStorage.getItem(DEVICE_KEY) || "";
+    }catch(err){ deviceId = ""; }
+    if(!deviceId){
+      deviceId = "dev_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+      try{ localStorage.setItem(DEVICE_KEY, deviceId); }catch(err){}
+    }
+  }
+
+  function loadLocalLikes(){
+    try{
+      var raw = localStorage.getItem(LIKES_KEY);
+      likesData = raw ? (JSON.parse(raw) || {}) : {};
+    }catch(err){ likesData = {}; }
+  }
+
+  function persistLocalLikes(){
+    try{ localStorage.setItem(LIKES_KEY, JSON.stringify(likesData)); }
+    catch(err){ console.warn("No se pudieron guardar los likes", err); }
+  }
+
+  function likeCount(logId){
+    var entry = likesData[logId];
+    if(!entry) return 0;
+    return Object.keys(entry).filter(function(k){ return !!entry[k]; }).length;
+  }
+
+  function hasLiked(logId){
+    var entry = likesData[logId];
+    return !!(entry && entry[deviceId]);
+  }
+
+  function toggleLike(logId){
+    if(!logId) return;
+    if(!likesData[logId]) likesData[logId] = {};
+
+    var nowLiked = !hasLiked(logId);
+    if(nowLiked) likesData[logId][deviceId] = true;
+    else delete likesData[logId][deviceId];
+
+    persistLocalLikes();
+    renderGallery();
+    refreshLightboxLike(logId);
+    pushLikeToFirebase(logId, nowLiked);
+  }
+
+  function pushLikeToFirebase(logId, liked){
+    if(!fbBase) return;
+    var url = fbBase + "viaje/likes/" + encodeURIComponent(logId) + "/" + encodeURIComponent(deviceId) + ".json";
+    if(liked){
+      fetch(url, { method:"PUT", headers:{ "Content-Type":"application/json" }, body:"true" }).catch(function(){});
+    } else {
+      fetch(url, { method:"DELETE" }).catch(function(){});
+    }
+  }
+
+  // Fusiona lo que hay en la nube preservando lo que este celular acaba de tocar
+  // (por si el toque todavía no llegó al servidor).
+  function mergeRemoteLikes(remote){
+    var merged = (remote && typeof remote === "object") ? remote : {};
+    var result = {};
+    Object.keys(merged).forEach(function(logId){
+      var entry = merged[logId];
+      result[logId] = {};
+      if(entry && typeof entry === "object"){
+        Object.keys(entry).forEach(function(dev){ if(entry[dev]) result[logId][dev] = true; });
+      }
+    });
+    // preserva el estado local de ESTE dispositivo
+    Object.keys(likesData).forEach(function(logId){
+      var mine = likesData[logId] && likesData[logId][deviceId];
+      if(mine){
+        if(!result[logId]) result[logId] = {};
+        result[logId][deviceId] = true;
+      }
+    });
+    likesData = result;
+    persistLocalLikes();
+  }
+
+  function refetchLikes(){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/likes.json").then(function(r){ return r.json(); }).then(function(data){
+      mergeRemoteLikes(data);
+      renderGallery();
+      refreshLightboxLike();
+    }).catch(function(){});
+  }
+
+  // Guarda las fotos. Si no entran, va tirando las más viejas hasta que entren:
+  // preferimos perder una foto antigua antes que perder el contador entero.
+  function persistLocalPhotos(){
+    for(var intento = 0; intento < 40; intento++){
+      try{
+        localStorage.setItem(PHOTOS_KEY, JSON.stringify(localPhotos));
+        return true;
+      }catch(err){
+        var oldestId = findOldestPhotoId();
+        if(!oldestId){
+          try{ localStorage.removeItem(PHOTOS_KEY); }catch(e){}
+          return false;
+        }
+        delete localPhotos[oldestId];
+        showToast("Memoria del celular llena: se borró la foto más vieja");
+      }
+    }
+    return false;
+  }
+
+  function findOldestPhotoId(){
+    var ids = Object.keys(localPhotos);
+    if(ids.length === 0) return null;
+    var order = {};
+    state.logs.forEach(function(l, i){ order[l.id] = i; });
+    ids.sort(function(a,b){
+      var oa = order[a] === undefined ? -1 : order[a];
+      var ob = order[b] === undefined ? -1 : order[b];
+      return oa - ob;
+    });
+    return ids[0];
+  }
+
+  // Devuelve la foto de un log: primero la URL de la nube (si se subió a
+  // Firebase Storage), si no la copia guardada en este celular.
+  function getPhotoFor(log){
+    if(!log) return null;
+    if(log.photo) return log.photo;
+    return localPhotos[log.id] || null;
+  }
+
+  function persistState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(err){
+      console.warn("No se pudo guardar", err);
+      if(err && err.name === "QuotaExceededError"){
+        // El estado (contador, rondas) es lo más importante: si no entra,
+        // liberamos espacio tirando fotos y reintentamos.
+        localPhotos = {};
+        try{ localStorage.removeItem(PHOTOS_KEY); }catch(e){}
+        try{
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          showToast("Memoria llena: se borraron las fotos locales para no perder el contador");
+        }catch(e2){
+          showToast("No hay espacio para guardar en este celular");
+        }
+      }
+    }
+  }
+
+  function saveAndRender(){
+    persistState();
+    renderAll();
+  }
+
+  // ---------------- Helpers ----------------
+  function escapeHtml(str){
+    if(str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, function(m){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m];
+    });
+  }
+
+  function totalCaipis(){
+    var t = 0;
+    for(var i=0;i<state.logs.length;i++) t += (state.logs[i].qty || 1);
+    return t;
+  }
+
+  function formatTime(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    return d.toLocaleTimeString("es-AR", { hour:"2-digit", minute:"2-digit" });
+  }
+
+  function formatDate(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    return d.toLocaleDateString("es-AR", { day:"2-digit", month:"2-digit" }) + " · " + d.toLocaleTimeString("es-AR", { hour:"2-digit", minute:"2-digit" });
+  }
+
+  function showToast(msg){
+    var el = document.getElementById("toast");
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.add("open");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove("open"); }, 2400);
+  }
+
+  // ---------------- Sheets ----------------
+  function openSheet(id){
+    var el = document.getElementById(id);
+    if(el) el.classList.add("open");
+  }
+  function closeSheet(id){
+    var el = document.getElementById(id);
+    if(el) el.classList.remove("open");
+    if(id === "addSheet") clearPendingPhoto();
+  }
+
+  function askConfirm(opts, onConfirm){
+    document.getElementById("confirmTitle").textContent = opts.title || "Confirmar";
+    document.getElementById("confirmMessage").textContent = opts.message || "";
+    var okBtn = document.getElementById("confirmOkBtn");
+    okBtn.textContent = opts.okLabel || "Confirmar";
+    okBtn.classList.toggle("neutral", !!opts.neutral);
+    pendingConfirmAction = onConfirm;
+    openSheet("confirmSheet");
+  }
+
+  // ---------------- Tabs ----------------
+  function switchTab(tab){
+    var tabs = ["home","ranking","stats","gallery"];
+    tabs.forEach(function(t){
+      var view = document.getElementById("view-" + t);
+      if(view) view.classList.toggle("hidden", t !== tab);
+    });
+    document.querySelectorAll(".tab-btn").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
+    });
+    if(tab === "stats") renderCharts();
+  }
+
+  // ---------------- Render: everything ----------------
+  function renderAll(){
+    renderHero();
+    renderQuickStats();
+    renderRecentFeed();
+    renderRanking();
+    renderAwards();
+    renderGallery();
+    renderFriendSelectors();
+    renderConfigFriends();
+    refreshSyncWarning();
+    var statsView = document.getElementById("view-stats");
+    if(statsView && !statsView.classList.contains("hidden")) renderCharts();
+  }
+
+  function renderHero(){
+    var total = totalCaipis();
+    var display = document.getElementById("totalCounterDisplay");
+    if(display) display.textContent = total;
+
+    var milestones = state.goalMilestones.slice().sort(function(a,b){ return a-b; });
+    var nextMilestone = milestones[0];
+    var found = false;
+    for(var i=0;i<milestones.length;i++){
+      if(milestones[i] > total){ nextMilestone = milestones[i]; found = true; break; }
+    }
+    if(!found){ nextMilestone = (Math.floor(total/10)+1)*10; }
+
+    var prevMilestone = 0;
+    for(var k=0;k<milestones.length;k++){ if(milestones[k] <= total) prevMilestone = milestones[k]; }
+    if(total >= milestones[milestones.length-1] && found === false){
+      prevMilestone = Math.floor(total/10)*10;
+    }
+
+    var diff = nextMilestone - prevMilestone;
+    var progress = diff > 0 ? Math.min(100, Math.max(0, Math.round(((total - prevMilestone)/diff)*100))) : 100;
+
+    setText("nextGoalLabel", "#" + nextMilestone);
+    setStyle("goalProgressBar", "width", progress + "%");
+    setText("goalProgressPercent", progress + "%");
+    setText("goalRemainingText", "Faltan " + Math.max(0, nextMilestone - total) + " para el próximo gol");
+  }
+
+  function setText(id, val){ var el = document.getElementById(id); if(el) el.textContent = val; }
+  function setStyle(id, prop, val){ var el = document.getElementById(id); if(el) el.style[prop] = val; }
+
+  function renderQuickStats(){
+    var counts = {}, cityCounts = {}, totalSpent = 0;
+    state.friends.forEach(function(f){ counts[f] = 0; });
+
+    state.logs.forEach(function(l){
+      var q = l.qty || 1;
+      counts[l.friend] = (counts[l.friend] || 0) + q;
+      if(l.price) totalSpent += Number(l.price);
+      var cityKey = (l.city || "").trim();
+      if(cityKey) cityCounts[cityKey] = (cityCounts[cityKey] || 0) + q;
+    });
+
+    var topFriend = "–", topCount = 0;
+    Object.keys(counts).forEach(function(f){
+      if(counts[f] > topCount){ topCount = counts[f]; topFriend = f; }
+    });
+    setText("topDrinkerName", topFriend);
+    setText("topDrinkerCount", topCount + (topCount === 1 ? " caipi" : " caipis"));
+
+    var topCity = "–", topCityCount = 0;
+    Object.keys(cityCounts).forEach(function(c){
+      if(cityCounts[c] > topCityCount){ topCityCount = cityCounts[c]; topCity = c; }
+    });
+    setText("topLocationName", topCity);
+    setText("topLocationCount", topCityCount > 0 ? (topCityCount + " caipis") : "Sin datos");
+
+    setText("totalSpendReales", "R$ " + totalSpent.toLocaleString("es-AR"));
+    var per = state.friends.length > 0 ? Math.round(totalSpent / state.friends.length) : 0;
+    setText("totalSpendPerPerson", "R$ " + per + " / persona");
+  }
+
+  var homeFeedExpanded = false;
+
+  function renderRecentFeed(){
+    var cont = document.getElementById("homeRecentList");
+    if(!cont) return;
+
+    if(state.logs.length === 0){
+      cont.innerHTML = emptyStateHtml("Todavía no hay nada anotado", "Arrancá con la primera caipi del viaje.");
+      return;
+    }
+
+    var totalLogs = state.logs.length;
+    var showAll = homeFeedExpanded || totalLogs <= 5;
+    var recent = (showAll ? state.logs.slice() : state.logs.slice(-5)).reverse();
+
+    var html = "";
+    recent.forEach(function(log){
+      html += '<div class="row">' +
+        '<div class="row-left">' +
+          '<span class="row-glyph">' + (PLACE_EMOJI[log.placeType] || "🍹") + '</span>' +
+          '<div>' +
+            '<div class="row-name">' + escapeHtml(log.friend) + '<span class="pill-qty">+' + (log.qty||1) + '</span>' + (getPhotoFor(log) ? '<span class="row-photo-badge">📷</span>' : '') + '</div>' +
+            '<div class="row-meta">' + escapeHtml(log.city || log.placeType || "Playa") + (log.price ? " · R$ " + log.price : "") + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex; align-items:center; gap:6px;">' +
+          '<span class="row-time">' + formatTime(log.timestamp) + '</span>' +
+          '<button type="button" class="entry-del" data-action="delete-log" data-id="' + escapeHtml(log.id) + '" aria-label="Borrar registro">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0-.8 13.2A2 2 0 0 1 15.2 21H8.8a2 2 0 0 1-2-1.8L6 6"/></svg>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    });
+
+    if(!showAll){
+      html += '<button type="button" class="home-feed-toggle" data-action="toggle-home-feed">Ver todas las rondas (' + totalLogs + ')</button>';
+    } else if(homeFeedExpanded && totalLogs > 5){
+      html += '<button type="button" class="home-feed-toggle" data-action="toggle-home-feed">Ver menos</button>';
+    }
+
+    cont.innerHTML = html;
+  }
+
+  function emptyStateHtml(title, sub){
+    return '<div class="empty-state"><strong>' + escapeHtml(title) + '</strong>' + escapeHtml(sub) + '</div>';
+  }
+
+  function computeFriendStats(){
+    var stats = {};
+    state.friends.forEach(function(f){ stats[f] = { name:f, count:0, spent:0 }; });
+    state.logs.forEach(function(log){
+      if(!stats[log.friend]) stats[log.friend] = { name:log.friend, count:0, spent:0 };
+      var q = log.qty || 1;
+      stats[log.friend].count += q;
+      if(log.price) stats[log.friend].spent += Number(log.price);
+    });
+    return Object.keys(stats).map(function(k){ return stats[k]; }).sort(function(a,b){ return b.count - a.count; });
+  }
+
+  function renderRanking(){
+    var sorted = computeFriendStats();
+
+    setText("podium1Name", sorted[0] ? sorted[0].name : "–");
+    setText("podium1Count", sorted[0] ? sorted[0].count : "0");
+    setText("podium2Name", sorted[1] ? sorted[1].name : "–");
+    setText("podium2Count", sorted[1] ? sorted[1].count : "0");
+    setText("podium3Name", sorted[2] ? sorted[2].name : "–");
+    setText("podium3Count", sorted[2] ? sorted[2].count : "0");
+
+    var cont = document.getElementById("leaderboardFullList");
+    if(!cont) return;
+
+    if(sorted.length === 0 || totalCaipis() === 0){
+      cont.innerHTML = emptyStateHtml("Sin ranking todavía", "Anotá alguna caipi para armar la tabla.");
+      return;
+    }
+
+    var medals = ["🥇","🥈","🥉"];
+    var html = "";
+    sorted.forEach(function(p, idx){
+      var badge = idx < 3 ? medals[idx] : String(idx+1);
+      html += '<div class="rank-row">' +
+        '<div class="rank-row-left">' +
+          '<span class="rank-num">' + badge + '</span>' +
+          '<div><div class="rank-name">' + escapeHtml(p.name) + '</div>' +
+          '<div class="rank-spend">R$ ' + p.spent.toLocaleString("es-AR") + ' gastados</div></div>' +
+        '</div>' +
+        '<div><div class="rank-count">' + p.count + '</div><div class="rank-count-label">caipis</div></div>' +
+      '</div>';
+    });
+    cont.innerHTML = html;
+  }
+
+  function renderAwards(){
+    var grid = document.getElementById("awardsGrid");
+    if(!grid) return;
+
+    if(state.logs.length === 0){
+      grid.innerHTML = '<div style="grid-column:span 2;">' + emptyStateHtml("Los premios se activan solos", "En cuanto haya caipis anotadas.") + '</div>';
+      return;
+    }
+
+    var friendTotals={}, beachTotals={}, clubTotals={}, spends={};
+    state.logs.forEach(function(l){
+      var q = l.qty || 1;
+      friendTotals[l.friend] = (friendTotals[l.friend]||0) + q;
+      if(l.placeType === "Playa") beachTotals[l.friend] = (beachTotals[l.friend]||0) + q;
+      if(l.placeType === "Boliche / Fiesta") clubTotals[l.friend] = (clubTotals[l.friend]||0) + q;
+      if(l.price) spends[l.friend] = (spends[l.friend]||0) + Number(l.price);
+    });
+
+    function topOf(obj){
+      var arr = Object.keys(obj).map(function(k){ return [k, obj[k]]; }).sort(function(a,b){ return b[1]-a[1]; });
+      return arr[0] || ["–", 0];
+    }
+
+    var awards = [
+      { label:"Bota de oro", glyph:"👑", data: topOf(friendTotals), unit:"caipis" },
+      { label:"Rey de playa", glyph:"🏖️", data: topOf(beachTotals), unit:"caipis" },
+      { label:"MVP del boliche", glyph:"🪩", data: topOf(clubTotals), unit:"caipis" },
+      { label:"Mayor inversión", glyph:"💸", data: topOf(spends), unit:"R$", isMoney:true }
+    ];
+
+    grid.innerHTML = awards.map(function(a){
+      return '<div class="award-card">' +
+        '<div class="award-label"><span>' + a.glyph + '</span><span>' + a.label + '</span></div>' +
+        '<div class="award-name">' + escapeHtml(a.data[0]) + '</div>' +
+        '<div class="award-sub">' + (a.isMoney ? ("R$ " + a.data[1].toLocaleString("es-AR")) : (a.data[1] + " " + a.unit)) + '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  function renderCharts(){
+    var contD = document.getElementById("chartDrinkerContainer");
+    if(contD){
+      var counts = {}, maxVal = 1;
+      state.friends.forEach(function(f){ counts[f] = 0; });
+      state.logs.forEach(function(l){
+        var q = l.qty || 1;
+        counts[l.friend] = (counts[l.friend]||0) + q;
+        if(counts[l.friend] > maxVal) maxVal = counts[l.friend];
+      });
+      var names = Object.keys(counts);
+      if(names.length === 0){
+        contD.innerHTML = emptyStateHtml("Sin datos", "Todavía no hay amigos cargados.");
+      } else {
+        contD.innerHTML = names.map(function(f){
+          var val = counts[f];
+          var pct = Math.round((val/maxVal)*100);
+          return '<div class="bar-row">' +
+            '<div class="bar-label">' + escapeHtml(f) + '</div>' +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;"></div></div>' +
+            '<div class="bar-val">' + val + '</div>' +
+          '</div>';
+        }).join("");
+      }
+    }
+
+    var contL = document.getElementById("chartLocationContainer");
+    if(contL){
+      var places = {}, maxP = 1;
+      state.logs.forEach(function(l){
+        var p = l.placeType || "Playa";
+        places[p] = (places[p]||0) + (l.qty||1);
+        if(places[p] > maxP) maxP = places[p];
+      });
+      var placeList = Object.keys(places);
+      if(placeList.length === 0){
+        contL.innerHTML = emptyStateHtml("Sin datos", "Todavía no hay lugares registrados.");
+      } else {
+        contL.innerHTML = placeList.map(function(p){
+          var valP = places[p];
+          var pctP = Math.round((valP/maxP)*100);
+          return '<div class="bar-row">' +
+            '<div class="bar-label">' + escapeHtml(p) + '</div>' +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + pctP + '%; background:var(--blue);"></div></div>' +
+            '<div class="bar-val" style="color:var(--blue);">' + valP + '</div>' +
+          '</div>';
+        }).join("");
+      }
+    }
+  }
+
+  function renderGallery(){
+    var cont = document.getElementById("galleryGrid");
+    if(!cont) return;
+
+    var photos = state.logs.filter(function(l){ return !!getPhotoFor(l); }).slice().reverse();
+
+    if(photos.length === 0){
+      cont.innerHTML = emptyStateHtml("Todavía no hay fotos", "Sacá una la próxima vez que anotes una caipirinha.");
+      return;
+    }
+
+    var html = "";
+    photos.forEach(function(log){
+      var src = getPhotoFor(log);
+      var n = likeCount(log.id);
+      var mine = hasLiked(log.id);
+      html += '<div class="gallery-tile" data-photo-src="' + escapeHtml(src) + '" data-photo-id="' + escapeHtml(log.id) + '">' +
+        '<img src="' + escapeHtml(src) + '" alt="Foto de la caipirinha de ' + escapeHtml(log.friend) + '" loading="lazy" />' +
+        '<div class="gallery-tile-meta">' + escapeHtml(log.friend) + '</div>' +
+        '<button type="button" class="like-btn' + (mine ? ' liked' : '') + '" data-action="toggle-like" data-id="' + escapeHtml(log.id) + '" aria-label="Me gusta">' +
+          heartSvg(mine) +
+          '<span class="like-count">' + n + '</span>' +
+        '</button>' +
+      '</div>';
+    });
+    cont.innerHTML = html;
+  }
+
+  function heartSvg(filled){
+    return '<svg viewBox="0 0 24 24" fill="' + (filled ? "currentColor" : "none") + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 20.5s-7.5-4.6-7.5-9.6a4.3 4.3 0 0 1 7.5-2.9 4.3 4.3 0 0 1 7.5 2.9c0 5-7.5 9.6-7.5 9.6Z"/></svg>';
+  }
+
+  function renderFriendSelectors(){
+    ["formFriendSelect","quickFriendSelect"].forEach(function(id){
+      var sel = document.getElementById(id);
+      if(!sel) return;
+      var prev = sel.value;
+      sel.innerHTML = state.friends.map(function(f){
+        return '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>';
+      }).join("");
+      if(state.friends.indexOf(prev) !== -1) sel.value = prev;
+    });
+  }
+
+  function renderConfigFriends(){
+    var chips = document.getElementById("configFriendsList");
+    if(!chips) return;
+    chips.innerHTML = state.friends.map(function(f){
+      return '<span class="friend-chip">' + escapeHtml(f) +
+        '<button type="button" data-action="remove-friend" data-name="' + escapeHtml(f) + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
+        '</button>' +
+      '</span>';
+    }).join("");
+  }
+
+  // ---------------- Add log / milestones ----------------
+  function addLog(entry){
+    var prevTotal = totalCaipis();
+    entry.id = "log_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
+    entry.timestamp = new Date().toISOString();
+
+    // La foto NO viaja dentro del log: se guarda aparte, indexada por el id.
+    var photoDataUrl = entry.photo || null;
+    delete entry.photo;
+    if(photoDataUrl){
+      localPhotos[entry.id] = photoDataUrl;
+      persistLocalPhotos();
+    }
+
+    state.logs.push(entry);
+    saveAndRender();
+    pushLogToFirebase(entry, photoDataUrl);
+    checkGoalMilestone(prevTotal, prevTotal + (entry.qty || 1), entry);
+  }
+
+  function checkGoalMilestone(prev, curr, latestLog){
+    var triggered = null;
+    for(var i = prev + 1; i <= curr; i++){
+      if(i % 10 === 0 || state.goalMilestones.indexOf(i) !== -1){ triggered = i; break; }
+    }
+    if(triggered) triggerGoalCelebration(triggered, latestLog);
+  }
+
+  function triggerGoalCelebration(goalNumber, log){
+    setText("goalNumberReached", "#" + goalNumber);
+    var authorEl = document.getElementById("goalAuthorText");
+    if(authorEl){
+      authorEl.innerHTML = 'Anotada por <strong>' + escapeHtml(log.friend) + '</strong> en <strong>' + escapeHtml(log.city || log.placeType || "Río") + '</strong>';
+    }
+    document.getElementById("goalOverlay").classList.add("open");
+    playCheer();
+    if(typeof confetti === "function"){
+      confetti({ particleCount:130, spread:80, origin:{ y:0.6 }, colors:["#0E7A4E","#D9A521","#1E4A72","#FFFFFF"] });
+    }
+  }
+
+  function playCheer(){
+    try{
+      var AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if(AudioCtxClass && !audioCtx) audioCtx = new AudioCtxClass();
+      if(!audioCtx) return;
+      if(audioCtx.state === "suspended") audioCtx.resume();
+      var t = audioCtx.currentTime;
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(2800, t);
+      osc.frequency.exponentialRampToValueAtTime(3200, t + 0.15);
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(t); osc.stop(t + 0.22);
+    }catch(err){ console.warn("Audio no disponible", err); }
+  }
+
+  // ---------------- Firebase sync ----------------
+  // Diseño: cada caipirinha se guarda como un hijo propio en /viaje/logs/{id},
+  // no como un array gigante que se pisa entero. Así, si vos y un amigo anotan
+  // en el mismo segundo, las dos entradas quedan (cada una en su propia llave)
+  // en vez de que la última en llegar borre a la otra.
+  // Los amigos sí se guardan como un array simple: se edita mucho menos seguido,
+  // así que el riesgo de choque es bajo y mantenerlo simple vale la pena.
+
+  function setFbBadge(text){
+    var el = document.getElementById("firebaseStatusBadge");
+    if(el) el.textContent = text;
+    refreshSyncWarning();
+  }
+
+  // El aviso grande de la pantalla principal aparece solo si NO hay una base
+  // configurada. Un corte momentáneo del stream no lo dispara: el respaldo cada
+  // 20s sigue sincronizando igual, así que no tiene sentido alarmar por eso.
+  function refreshSyncWarning(){
+    var banner = document.getElementById("syncWarningBanner");
+    if(banner) banner.classList.toggle("hidden", !!fbBase);
+  }
+
+  function normalizeDbUrl(url){
+    var u = url.trim();
+    if(!u) return "";
+    if(!u.endsWith("/")) u += "/";
+    return u;
+  }
+
+  // ¿Hay backend de fotos configurado? (Cloudinary)
+  function photoUploadReady(){
+    return !!(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
+  }
+
+  function updatePhotoHint(){
+    var el = document.getElementById("photoHint");
+    if(el){
+      if(photoUploadReady() && fbBase){
+        el.textContent = "Se sube a la nube: la ve todo el grupo.";
+      } else if(fbBase){
+        el.textContent = "Ojo: queda guardada solo en este celular (no hay servicio de fotos configurado).";
+      } else {
+        el.textContent = "Queda guardada en este celular.";
+      }
+    }
+    var badge = document.getElementById("photoBackendBadge");
+    if(badge) badge.textContent = photoUploadReady() ? "Activadas" : "Solo local";
+  }
+
+  function connectFirebase(dbUrl){
+    disconnectFirebase();
+    fbBase = normalizeDbUrl(dbUrl);
+    updatePhotoHint();
+    if(!fbBase) { setFbBadge("Modo local"); return; }
+
+    setFbBadge("Conectando…");
+
+    // 1) Traer lo que ya haya en la base compartida y fusionarlo con lo local,
+    //    para no perder nada que se haya anotado antes de configurar la sync.
+    Promise.all([
+      fetch(fbBase + "viaje/logs.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      fetch(fbBase + "viaje/friends.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      fetch(fbBase + "viaje/likes.json").then(function(r){ return r.json(); }).catch(function(){ return null; })
+    ]).then(function(results){
+      var remoteLogs = results[0];
+      var remoteFriends = results[1];
+      var remoteLikes = results[2];
+      mergeRemoteLogs(remoteLogs, true /* push local-only logs up */);
+      mergeRemoteFriends(remoteFriends, true /* push local friends up if remote is empty */);
+      mergeRemoteLikes(remoteLikes);
+      pushLocalOnlyLikes();
+      retryPendingPhotoUploads();
+      persistState();
+      renderAll();
+      startFirebaseStreams();
+    }).catch(function(){
+      setFbBadge("Sin conexión");
+      startFirebaseStreams();
+    });
+  }
+
+  // Sube los likes que este celular dio mientras estaba sin conexión.
+  function pushLocalOnlyLikes(){
+    if(!fbBase) return;
+    Object.keys(likesData).forEach(function(logId){
+      if(likesData[logId] && likesData[logId][deviceId]) pushLikeToFirebase(logId, true);
+    });
+  }
+
+  function disconnectFirebase(){
+    if(fbLogsStream){ fbLogsStream.close(); fbLogsStream = null; }
+    if(fbFriendsStream){ fbFriendsStream.close(); fbFriendsStream = null; }
+    if(fbLikesStream){ fbLikesStream.close(); fbLikesStream = null; }
+    if(fbFallbackPoll){ clearInterval(fbFallbackPoll); fbFallbackPoll = null; }
+    fbBase = "";
+    updatePhotoHint();
+  }
+
+  function startFirebaseStreams(){
+    if(!fbBase) return;
+
+    try{
+      fbLogsStream = new EventSource(fbBase + "viaje/logs.json");
+      fbLogsStream.onopen = function(){ setFbBadge("Sincronizado"); };
+      fbLogsStream.onmessage = function(){ refetchLogs(); };
+      fbLogsStream.onerror = function(){ setFbBadge("Reconectando…"); };
+    }catch(err){ console.warn("No se pudo abrir el stream de logs", err); }
+
+    try{
+      fbFriendsStream = new EventSource(fbBase + "viaje/friends.json");
+      fbFriendsStream.onmessage = function(){ refetchFriends(); };
+    }catch(err){ console.warn("No se pudo abrir el stream de amigos", err); }
+
+    try{
+      fbLikesStream = new EventSource(fbBase + "viaje/likes.json");
+      fbLikesStream.onmessage = function(){ refetchLikes(); };
+    }catch(err){ console.warn("No se pudo abrir el stream de likes", err); }
+
+    // Red de seguridad: si el stream se corta silenciosamente (común cuando el
+    // celular pasa a segundo plano), esto lo compensa cada 20s.
+    if(fbFallbackPoll) clearInterval(fbFallbackPoll);
+    fbFallbackPoll = setInterval(function(){ refetchLogs(); refetchFriends(); refetchLikes(); }, 20000);
+  }
+
+  function refetchLogs(){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/logs.json").then(function(r){ return r.json(); }).then(function(data){
+      mergeRemoteLogs(data, false);
+      persistState();
+      renderAll();
+    }).catch(function(){});
+  }
+
+  function refetchFriends(){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/friends.json").then(function(r){ return r.json(); }).then(function(data){
+      mergeRemoteFriends(data, false);
+      persistState();
+      renderAll();
+    }).catch(function(){});
+  }
+
+  // remoteLogs llega como objeto { id: logObj, ... } (así los guarda Firebase
+  // cuando escribimos con PUT a una llave). Lo pasamos a array y listo.
+  function mergeRemoteLogs(remoteLogs, pushLocalOnly){
+    var remoteArr = remoteLogs && typeof remoteLogs === "object" ? Object.keys(remoteLogs).map(function(k){ return remoteLogs[k]; }) : [];
+
+    if(pushLocalOnly){
+      var remoteIds = {};
+      remoteArr.forEach(function(l){ remoteIds[l.id] = true; });
+      state.logs.forEach(function(l){
+        if(!remoteIds[l.id]) pushLogToFirebase(l);
+      });
+    }
+
+    if(remoteArr.length > 0 || !pushLocalOnly){
+      remoteArr.sort(function(a,b){ return new Date(a.timestamp) - new Date(b.timestamp); });
+      state.logs = remoteArr;
+    }
+  }
+
+  function mergeRemoteFriends(remoteFriends, pushLocalIfRemoteEmpty){
+    if(Array.isArray(remoteFriends) && remoteFriends.length > 0){
+      state.friends = remoteFriends;
+    } else if(pushLocalIfRemoteEmpty && state.friends.length > 0){
+      pushFriendsToFirebase();
+    }
+  }
+
+  // photoDataUrl viene aparte porque el log ya no la lleva adentro.
+  function pushLogToFirebase(log, photoDataUrl){
+    if(!fbBase) return;
+
+    // Si el log ya trae una URL de la nube, no hay nada que subir de nuevo.
+    if(log.photo){ putLogJson(log); return; }
+
+    var pic = photoDataUrl || localPhotos[log.id] || null;
+
+    if(pic && photoUploadReady()){
+      uploadPhotoToCloud(pic).then(function(url){
+        // Guardamos la URL de la nube en el log: así la ve TODO el grupo.
+        putLogJson(Object.assign({}, log, { photo:url }));
+        var local = state.logs.filter(function(l){ return l.id === log.id; })[0];
+        if(local && local.photo !== url){
+          local.photo = url;
+          persistState();
+          renderAll();
+        }
+      }).catch(function(err){
+        console.warn("No se pudo subir la foto", err);
+        // Si falla la subida, igual sincronizamos la ronda; la foto queda local
+        // y se reintenta sola en la próxima reconexión.
+        putLogJson(log);
+      });
+    } else {
+      putLogJson(log);
+    }
+  }
+
+  function putLogJson(log){
+    fetch(fbBase + "viaje/logs/" + encodeURIComponent(log.id) + ".json", {
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(log)
+    }).catch(function(){});
+  }
+
+  // Sube la foto a Cloudinary con un "unsigned preset": no necesita login ni
+  // claves secretas, por eso funciona igual desde el celular de cualquier amigo.
+  function uploadPhotoToCloud(dataUrl){
+    var endpoint = "https://api.cloudinary.com/v1_1/" + CLOUDINARY_CLOUD_NAME + "/image/upload";
+    var form = new FormData();
+    form.append("file", dataUrl);                          // acepta el data:image/jpeg;base64,...
+    form.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    form.append("folder", "caipirometro");
+
+    return fetch(endpoint, { method:"POST", body:form })
+      .then(function(r){ return r.json(); })
+      .then(function(res){
+        if(!res || !res.secure_url){
+          throw new Error(res && res.error ? res.error.message : "Cloudinary no devolvió la URL");
+        }
+        return res.secure_url;
+      });
+  }
+
+  // Reintenta subir las fotos que quedaron solo en este celular (por ejemplo,
+  // las sacadas sin señal, o antes de configurar Cloudinary).
+  function retryPendingPhotoUploads(){
+    if(!fbBase || !photoUploadReady()) return;
+    state.logs.forEach(function(l){
+      if(!l.photo && localPhotos[l.id]) pushLogToFirebase(l, localPhotos[l.id]);
+    });
+  }
+
+  function deleteLogFromFirebase(id){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/logs/" + encodeURIComponent(id) + ".json", { method:"DELETE" }).catch(function(){});
+  }
+
+  // Nota: borrar un archivo ya subido a Cloudinary requiere la clave secreta,
+  // que a propósito NO está en este archivo (sería pública). Así que la foto
+  // desaparece de la app para todos, pero el archivo queda en la cuenta.
+  function deletePhotoFromStorage(id){ /* no aplica con subidas unsigned */ }
+
+  function deleteLikesFromFirebase(id){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/likes/" + encodeURIComponent(id) + ".json", { method:"DELETE" }).catch(function(){});
+  }
+
+  function pushFriendsToFirebase(){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/friends.json", {
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(state.friends)
+    }).catch(function(){});
+  }
+
+  function clearRemoteLogs(){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/logs.json", { method:"DELETE" }).catch(function(){});
+  }
+
+  function clearRemoteLikes(){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/likes.json", { method:"DELETE" }).catch(function(){});
+  }
+
+  // ---------------- Foto: compresión + preview ----------------
+  var PHOTO_MAX_DIMENSION = 1080;
+  var PHOTO_JPEG_QUALITY = 0.65;
+
+  function compressImage(file){
+    return new Promise(function(resolve, reject){
+      if(!file || file.type.indexOf("image/") !== 0){
+        reject(new Error("El archivo no es una imagen"));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          var scale = Math.min(1, PHOTO_MAX_DIMENSION / Math.max(img.width, img.height));
+          var w = Math.max(1, Math.round(img.width * scale));
+          var h = Math.max(1, Math.round(img.height * scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function(blob){
+            if(!blob){ reject(new Error("No se pudo procesar la imagen")); return; }
+            var fr2 = new FileReader();
+            fr2.onload = function(){ resolve({ dataUrl: fr2.result, blob: blob }); };
+            fr2.onerror = function(){ reject(new Error("No se pudo leer la imagen comprimida")); };
+            fr2.readAsDataURL(blob);
+          }, "image/jpeg", PHOTO_JPEG_QUALITY);
+        };
+        img.onerror = function(){ reject(new Error("No se pudo abrir la imagen")); };
+        img.src = reader.result;
+      };
+      reader.onerror = function(){ reject(new Error("No se pudo leer el archivo")); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function setPendingPhoto(result){
+    pendingPhoto = result;
+    var wrap = document.getElementById("photoPreviewWrap");
+    var buttons = document.getElementById("photoButtons");
+    var img = document.getElementById("photoPreviewImg");
+    if(img) img.src = result.dataUrl;
+    if(wrap) wrap.classList.remove("hidden");
+    if(buttons) buttons.classList.add("hidden");
+  }
+
+  function clearPendingPhoto(){
+    pendingPhoto = null;
+    var wrap = document.getElementById("photoPreviewWrap");
+    var buttons = document.getElementById("photoButtons");
+    var img = document.getElementById("photoPreviewImg");
+    if(img) img.src = "";
+    if(wrap) wrap.classList.add("hidden");
+    if(buttons) buttons.classList.remove("hidden");
+    var camIn = document.getElementById("cameraInput");
+    var galIn = document.getElementById("galleryInput");
+    if(camIn) camIn.value = "";
+    if(galIn) galIn.value = "";
+  }
+
+  function handlePhotoFile(file){
+    if(!file) return;
+    showToast("Procesando foto…");
+    compressImage(file).then(function(result){
+      setPendingPhoto(result);
+    }).catch(function(err){
+      console.warn(err);
+      showToast("No se pudo usar esa foto");
+    });
+  }
+
+  // ---------------- Lightbox ----------------
+  function openLightbox(src, logId){
+    if(!src) return;
+    var img = document.getElementById("lightboxImg");
+    if(img) img.src = src;
+
+    var log = logId ? state.logs.filter(function(l){ return l.id === logId; })[0] : null;
+    var caption = document.getElementById("lightboxCaption");
+    if(caption){
+      caption.textContent = log ? (log.friend + " · " + (log.city || log.placeType || "Río") + " · " + formatDate(log.timestamp)) : "";
+    }
+    var delBtn = document.getElementById("btnDeleteLightboxPhoto");
+    if(delBtn){
+      if(logId){ delBtn.setAttribute("data-id", logId); delBtn.classList.remove("hidden"); }
+      else { delBtn.classList.add("hidden"); }
+    }
+
+    var likeBtn = document.getElementById("btnLightboxLike");
+    if(likeBtn){
+      if(logId){ likeBtn.setAttribute("data-id", logId); likeBtn.classList.remove("hidden"); }
+      else { likeBtn.classList.add("hidden"); }
+    }
+    refreshLightboxLike(logId);
+
+    var overlay = document.getElementById("photoLightbox");
+    if(overlay) overlay.classList.add("open");
+  }
+
+  // Mantiene el corazón del lightbox al día (al abrirlo, al tocarlo, o cuando
+  // llegan likes de otro celular por la sincronización).
+  function refreshLightboxLike(logId){
+    var likeBtn = document.getElementById("btnLightboxLike");
+    if(!likeBtn) return;
+    var current = likeBtn.getAttribute("data-id");
+    if(logId && current !== logId) return;
+    var id = current;
+    if(!id) return;
+    var mine = hasLiked(id);
+    likeBtn.classList.toggle("liked", mine);
+    var heart = document.getElementById("lightboxHeart");
+    if(heart) heart.innerHTML = heartSvg(mine);
+    var cnt = document.getElementById("lightboxLikeCount");
+    if(cnt) cnt.textContent = likeCount(id);
+  }
+
+  function closeLightbox(){
+    var overlay = document.getElementById("photoLightbox");
+    if(overlay) overlay.classList.remove("open");
+  }
+
+  // ---------------- Export / Import ----------------
+  function exportJson(){
+    var dataStr = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+    var a = document.createElement("a");
+    a.href = dataStr;
+    a.download = "caipirometro_rio_" + new Date().toISOString().slice(0,10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast("Backup descargado");
+  }
+
+  function importJsonFile(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var parsed = JSON.parse(reader.result);
+        if(parsed && Array.isArray(parsed.friends) && Array.isArray(parsed.logs)){
+          state.friends = parsed.friends;
+          state.logs = parsed.logs;
+          if(parsed.firebaseUrl) state.firebaseUrl = parsed.firebaseUrl;
+          saveAndRender();
+          // Si hay una base compartida conectada, esto sube lo restaurado que
+          // todavía no esté ahí — si no, quedaría pisado por la próxima sync.
+          if(state.firebaseUrl) connectFirebase(state.firebaseUrl);
+          showToast("Datos restaurados");
+        } else {
+          showToast("Ese archivo no tiene el formato esperado");
+        }
+      }catch(err){ showToast("No se pudo leer el archivo JSON"); }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------------- Wiring ----------------
+  function init(){
+    loadState();
+
+    var input = document.getElementById("firebaseDbUrl");
+    if(input) input.value = state.firebaseUrl || "";
+    if(state.firebaseUrl) connectFirebase(state.firebaseUrl);
+    else setFbBadge("Modo local");
+    updatePhotoHint();
+
+    renderAll();
+
+    // Tabs
+    document.querySelectorAll(".tab-btn[data-tab]").forEach(function(btn){
+      btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });
+    });
+    document.getElementById("btnOpenAdd").addEventListener("click", function(){ openSheet("addSheet"); });
+    document.getElementById("btnOpenAddFab").addEventListener("click", function(){ openSheet("addSheet"); });
+    document.getElementById("btnOpenQuickRound").addEventListener("click", function(){ openSheet("quickSheet"); });
+    document.querySelector('[data-tab="home-gallery-link"]').addEventListener("click", function(){ switchTab("gallery"); });
+
+    // Generic sheet close (backdrop click + close buttons)
+    document.querySelectorAll(".sheet-close[data-close]").forEach(function(btn){
+      btn.addEventListener("click", function(){ closeSheet(btn.getAttribute("data-close")); });
+    });
+    document.querySelectorAll(".sheet-backdrop").forEach(function(bd){
+      bd.addEventListener("click", function(e){ if(e.target === bd) closeSheet(bd.id); });
+    });
+
+    // Settings
+    document.getElementById("btnOpenSettings").addEventListener("click", function(){ openSheet("settingsSheet"); });
+
+    // Add caipirinha form
+    document.getElementById("caipiForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      var friendEl = document.getElementById("formFriendSelect");
+      var friend = friendEl && friendEl.value ? friendEl.value : state.friends[0];
+      if(!friend){ showToast("Agregá al menos un amigo primero"); return; }
+      var qty = parseInt(document.getElementById("formQty").value, 10) || 1;
+      var placeInput = document.querySelector('input[name="placeType"]:checked');
+      var placeType = placeInput ? placeInput.value : "Playa";
+      var city = document.getElementById("formCity").value.trim();
+      var priceVal = document.getElementById("formPrice").value;
+      var price = priceVal ? Number(priceVal) : null;
+      var ratingInput = document.querySelector('input[name="rating"]:checked');
+      var rating = ratingInput ? ratingInput.value : "5";
+      var note = document.getElementById("formNote").value.trim();
+      var photo = pendingPhoto ? pendingPhoto.dataUrl : null;
+
+      addLog({ friend:friend, qty:qty, placeType:placeType, city:city, price:price, rating:rating, note:note, photo:photo });
+
+      closeSheet("addSheet");
+      document.getElementById("formQty").value = 1;
+      document.getElementById("formNote").value = "";
+      document.getElementById("formPrice").value = "";
+      document.getElementById("formCity").value = "";
+      clearPendingPhoto();
+      showToast("¡Caipirinha anotada!");
+    });
+
+    // Foto: sacar / elegir / quitar
+    document.getElementById("btnTakePhoto").addEventListener("click", function(){ document.getElementById("cameraInput").click(); });
+    document.getElementById("btnPickPhoto").addEventListener("click", function(){ document.getElementById("galleryInput").click(); });
+    document.getElementById("cameraInput").addEventListener("change", function(e){
+      if(e.target.files && e.target.files[0]) handlePhotoFile(e.target.files[0]);
+    });
+    document.getElementById("galleryInput").addEventListener("change", function(e){
+      if(e.target.files && e.target.files[0]) handlePhotoFile(e.target.files[0]);
+    });
+    document.getElementById("btnRemovePhoto").addEventListener("click", clearPendingPhoto);
+
+    // Lightbox
+    document.getElementById("btnCloseLightbox").addEventListener("click", closeLightbox);
+    document.getElementById("photoLightbox").addEventListener("click", function(e){
+      if(e.target.id === "photoLightbox") closeLightbox();
+    });
+    document.addEventListener("click", function(e){
+      // El corazón vive DENTRO del tile: si se tocó, damos like y NO abrimos la foto.
+      var likeBtn = e.target.closest('[data-action="toggle-like"]');
+      if(likeBtn){
+        e.stopPropagation();
+        var likeId = likeBtn.getAttribute("data-id");
+        toggleLike(likeId);
+        // pequeña animación de rebote en el corazón recién tocado
+        var fresh = document.querySelector('.gallery-tile [data-action="toggle-like"][data-id="' + likeId + '"]');
+        if(fresh){
+          fresh.classList.remove("pop");
+          void fresh.offsetWidth;
+          fresh.classList.add("pop");
+        }
+        return;
+      }
+      var photoTrigger = e.target.closest("[data-photo-src]");
+      if(photoTrigger) openLightbox(photoTrigger.getAttribute("data-photo-src"), photoTrigger.getAttribute("data-photo-id"));
+    });
+
+    // Qty steppers (add form)
+    document.querySelectorAll("[data-qty]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var el = document.getElementById("formQty");
+        var delta = parseInt(btn.getAttribute("data-qty"), 10);
+        var val = (parseInt(el.value,10) || 1) + delta;
+        el.value = Math.min(30, Math.max(1, val));
+      });
+    });
+
+    // Star rating visual sync
+    document.querySelectorAll('#starRow input[name="rating"]').forEach(function(radio){
+      radio.addEventListener("change", function(){
+        var val = Number(radio.value);
+        document.querySelectorAll("#starRow .star-option").forEach(function(opt){
+          opt.classList.toggle("lit", Number(opt.getAttribute("data-val")) <= val);
+        });
+      });
+    });
+
+    // Quick round
+    document.querySelectorAll("[data-qty-quick]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var el = document.getElementById("quickQty");
+        var delta = parseInt(btn.getAttribute("data-qty-quick"), 10);
+        var val = (parseInt(el.value,10) || 1) + delta;
+        el.value = Math.min(40, Math.max(1, val));
+      });
+    });
+    document.getElementById("btnConfirmQuick").addEventListener("click", function(){
+      var friendEl = document.getElementById("quickFriendSelect");
+      var friend = friendEl && friendEl.value ? friendEl.value : state.friends[0];
+      if(!friend){ showToast("Agregá al menos un amigo primero"); return; }
+      var qty = parseInt(document.getElementById("quickQty").value, 10) || 1;
+      addLog({ friend:friend, qty:qty, placeType:"Playa", city:"", price:null, rating:"5", note:"Ronda grupal rápida" });
+      closeSheet("quickSheet");
+      showToast("¡Ronda sumada!");
+    });
+
+    // Add friend sheet
+    function openAddFriendSheet(){ document.getElementById("newFriendName").value = ""; openSheet("friendSheet"); }
+    document.getElementById("btnAddFriendInline").addEventListener("click", openAddFriendSheet);
+    document.getElementById("btnOpenAddFriendFromSettings").addEventListener("click", openAddFriendSheet);
+    document.getElementById("btnConfirmAddFriend").addEventListener("click", function(){
+      var input = document.getElementById("newFriendName");
+      var name = input.value.trim();
+      if(!name){ showToast("Escribí un nombre"); return; }
+      if(state.friends.indexOf(name) !== -1){ showToast("Ese amigo ya está en la lista"); return; }
+      state.friends.push(name);
+      saveAndRender();
+      pushFriendsToFirebase();
+      closeSheet("friendSheet");
+      showToast('"' + name + '" agregado');
+    });
+
+    // Remove friend / delete log / expandir feed (delegated)
+    document.addEventListener("click", function(e){
+      var toggleBtn = e.target.closest('[data-action="toggle-home-feed"]');
+      if(toggleBtn){
+        homeFeedExpanded = !homeFeedExpanded;
+        renderRecentFeed();
+        return;
+      }
+      var removeBtn = e.target.closest('[data-action="remove-friend"]');
+      if(removeBtn){
+        var name = removeBtn.getAttribute("data-name");
+        askConfirm({
+          title:"Quitar amigo",
+          message: 'Vas a quitar a "' + name + '" de la lista. Sus rondas anotadas se mantienen guardadas.',
+          okLabel:"Quitar",
+          neutral:false
+        }, function(){
+          state.friends = state.friends.filter(function(f){ return f !== name; });
+          saveAndRender();
+          pushFriendsToFirebase();
+          showToast('"' + name + '" quitado');
+        });
+        return;
+      }
+      var delBtn = e.target.closest('[data-action="delete-log"]');
+      if(delBtn){
+        var id = delBtn.getAttribute("data-id");
+        if(!id) return;
+        askConfirm({
+          title:"Borrar registro",
+          message:"Esta caipirinha (y su foto, si tenía) se va a borrar del contador de todo el grupo.",
+          okLabel:"Borrar"
+        }, function(){
+          state.logs = state.logs.filter(function(l){ return l.id !== id; });
+          delete localPhotos[id];
+          persistLocalPhotos();
+          delete likesData[id];
+          persistLocalLikes();
+          saveAndRender();
+          deleteLogFromFirebase(id);
+          deletePhotoFromStorage(id);
+          deleteLikesFromFirebase(id);
+          closeLightbox();
+          showToast("Registro borrado");
+        });
+      }
+    });
+
+    // Confirm sheet buttons
+    document.getElementById("confirmCancelBtn").addEventListener("click", function(){
+      pendingConfirmAction = null;
+      closeSheet("confirmSheet");
+    });
+    document.getElementById("confirmOkBtn").addEventListener("click", function(){
+      var action = pendingConfirmAction;
+      pendingConfirmAction = null;
+      closeSheet("confirmSheet");
+      if(typeof action === "function") action();
+    });
+
+    // Firebase config
+    document.getElementById("btnSaveFirebase").addEventListener("click", function(){
+      var url = document.getElementById("firebaseDbUrl").value.trim();
+      state.firebaseUrl = url;
+      persistState();
+      if(url){
+        connectFirebase(url);
+        showToast("Conectando con Firebase…");
+      } else {
+        disconnectFirebase();
+        setFbBadge("Modo local");
+        showToast("Sincronización desactivada");
+      }
+    });
+
+    // Export / import
+    document.getElementById("btnExportJson").addEventListener("click", exportJson);
+    var importInput = document.getElementById("importFileInput");
+    document.getElementById("btnImportJson").addEventListener("click", function(){ importInput.click(); });
+    importInput.addEventListener("change", function(){
+      if(importInput.files && importInput.files[0]) importJsonFile(importInput.files[0]);
+      importInput.value = "";
+    });
+
+    // Reset
+    document.getElementById("btnResetData").addEventListener("click", function(){
+      var affectsGroup = !!fbBase;
+      askConfirm({
+        title:"Reiniciar contador",
+        message: (affectsGroup
+          ? "Esto borra las caipirinhas anotadas PARA TODO EL GRUPO, no solo en este celular, porque están sincronizadas. "
+          : "Se van a borrar todas las caipirinhas anotadas. ") +
+          "También se borran las fotos y los likes. Los amigos de la lista se mantienen. Esta acción no se puede deshacer.",
+        okLabel:"Reiniciar a cero"
+      }, function(){
+        state.logs = [];
+        localPhotos = {};
+        persistLocalPhotos();
+        likesData = {};
+        persistLocalLikes();
+        saveAndRender();
+        clearRemoteLogs();
+        clearRemoteLikes();
+        showToast("Contador reiniciado");
+      });
+    });
+
+    // Goal celebration close
+    document.getElementById("btnCloseGoal").addEventListener("click", function(){
+      document.getElementById("goalOverlay").classList.remove("open");
+    });
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
