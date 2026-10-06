@@ -292,7 +292,7 @@
   }
   .tab-btn{
     background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:4px;
-    font-size:10px; font-weight:600; color:var(--ink-faint); padding:4px 8px; min-width:52px;
+    font-size:10px; font-weight:600; color:var(--ink-faint); padding:4px 4px; min-width:48px;
   }
   .tab-btn svg{ width:21px; height:21px; }
   .tab-btn.active{ color:var(--green); }
@@ -427,6 +427,37 @@
     box-shadow:0 3px 10px -3px rgba(8,81,47,0.55);
   }
   .day-chip.active .day-chip-date, .filter-chip.active .chip-count{ opacity:0.85; }
+
+  /* ---------- Plan view (cronograma) ---------- */
+  .plan-info{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; justify-content:center; }
+  .plan-info span{
+    font-size:11.5px; font-weight:600; color:var(--blue); background:var(--blue-tint);
+    padding:4px 10px; border-radius:20px;
+  }
+  .plan-day-title{ font-family:'Space Grotesk'; font-weight:700; font-size:16px; margin-bottom:10px; }
+  .plan-timeline .row-time{ width:62px; font-size:12px; font-weight:700; color:var(--green); }
+  .plan-timeline .row{ justify-content:flex-start; }
+  .plan-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:14px; margin-bottom:10px;
+  }
+  .plan-card-head{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px; }
+  .plan-card-title{ font-family:'Space Grotesk'; font-weight:700; font-size:14.5px; }
+  .plan-card-time{ font-size:11.5px; font-weight:700; color:var(--green); flex-shrink:0; }
+  .plan-card p{ font-size:12.5px; line-height:1.5; color:var(--ink-soft); margin-top:5px; }
+  .plan-card p strong{ color:var(--ink); }
+  .plan-link{
+    display:inline-flex; align-items:center; gap:5px; margin-top:10px;
+    font-size:12px; font-weight:700; color:var(--green); text-decoration:none;
+    background:var(--green-tint); padding:6px 11px; border-radius:20px;
+  }
+  .plan-note{ font-size:12px; color:var(--ink-soft); line-height:1.5; margin:4px 2px 12px 2px; }
+  .plan-check{ display:flex; align-items:flex-start; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); font-size:12.5px; line-height:1.45; color:var(--ink-soft); }
+  .plan-check:last-child{ border-bottom:none; }
+  .plan-check input{ width:18px; height:18px; accent-color:var(--green); flex-shrink:0; margin-top:1px; }
+  .plan-check strong{ color:var(--ink); }
+  .plan-check.done{ opacity:0.55; }
+  .plan-check.done strong{ text-decoration:line-through; }
 
   /* ---------- Ranking view ---------- */
   .podium{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; align-items:end; margin:10px 0 4px 0; }
@@ -914,6 +945,12 @@
     </div>
   </main>
 
+  <!-- Selector Ranking / Stats: comparten la misma pestaña de la barra -->
+  <div class="currency-toggle hidden" id="rankStatsToggle" role="group" aria-label="Ranking o estadísticas" style="margin:4px auto 16px auto;">
+    <button type="button" data-subtab="ranking" class="active">Ranking</button>
+    <button type="button" data-subtab="stats">Estadísticas</button>
+  </div>
+
   <!-- VIEW: RANKING -->
   <main id="view-ranking" class="hidden">
     <div style="text-align:center; margin-bottom:14px;">
@@ -1000,6 +1037,21 @@
     <div class="gallery-grid" id="galleryGrid"></div>
   </main>
 
+  <!-- VIEW: PLAN (cronograma del viaje) -->
+  <main id="view-plan" class="hidden">
+    <div style="text-align:center; margin-bottom:12px;">
+      <div class="section-title" style="font-size:17px;">Cronograma</div>
+      <div class="row-meta">Jueves 15 al domingo 18 de octubre</div>
+    </div>
+    <div class="plan-info">
+      <span>✈️ Ida jue 9:30 → 12:30</span>
+      <span>✈️ Vuelta dom 16:45</span>
+      <span>🏨 Ipanema</span>
+    </div>
+    <div class="day-filter" id="planDayFilter"></div>
+    <div id="planContent"></div>
+  </main>
+
 </div>
 
 <!-- TOAST -->
@@ -1016,13 +1068,13 @@
     <span>Ranking</span>
   </button>
   <button type="button" class="fab" id="btnOpenAddFab" aria-label="Anotar caipirinha"><img src="glass-icon.png" alt="" class="fab-img" /></button>
-  <button type="button" class="tab-btn" data-tab="stats">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
-    <span>Stats</span>
-  </button>
   <button type="button" class="tab-btn" data-tab="gallery">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 15.5 8 11a1.6 1.6 0 0 1 2.3 0l3.7 3.7M13.5 13.5 15 12a1.6 1.6 0 0 1 2.3 0l2.2 2.2"/><circle cx="8.2" cy="8.2" r="1.4"/></svg>
     <span>Galería</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="plan">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+    <span>Plan</span>
   </button>
 </nav>
 
@@ -1698,15 +1750,218 @@
 
   // ---------------- Tabs ----------------
   function switchTab(tab){
-    var tabs = ["home","ranking","stats","gallery"];
+    var tabs = ["home","ranking","stats","gallery","plan"];
     tabs.forEach(function(t){
       var view = document.getElementById("view-" + t);
       if(view) view.classList.toggle("hidden", t !== tab);
     });
+    // Ranking y Stats van en la misma pestaña, con un selector arriba
+    var isRankStats = tab === "ranking" || tab === "stats";
+    document.getElementById("rankStatsToggle").classList.toggle("hidden", !isRankStats);
+    document.querySelectorAll("#rankStatsToggle [data-subtab]").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-subtab") === tab);
+    });
+    var barTab = isRankStats ? "ranking" : tab;
     document.querySelectorAll(".tab-btn").forEach(function(btn){
-      btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === barTab);
     });
     if(tab === "stats") renderCharts();
+    if(tab === "plan") renderPlan();
+  }
+
+  // ---------------- Plan: cronograma del viaje (sale de cronograma-rio-2026.md) ----------------
+  var PLAN_CHECKS_KEY = "caipirometro_plan_checks";
+  var TIKTOK = "https://www.tiktok.com/search?q=";
+
+  var PLAN_DAYS = [
+    { id:"jue", chip:"Jue", date:"15", title:"Jueves 15 · Llegada", iso:"2026-10-15",
+      timeline:[
+        ["12:30","Aterrizaje en Río","Vuelo de las 9:30 desde Córdoba"],
+        ["~14:00","Traslado a Ipanema","2 Uber XL o van para 8"],
+        ["~15:00","Check-in y almuerzo tardío","Descanso"],
+        ["~17:15","Atardecer en Ipanema","Barraca cerca de la vereda"],
+        ["~19:00","Cena en Ipanema","Primeros caipis"],
+        ["~20:30","Pedra do Sal, vuelta tranqui","Y temprano a descansar"]
+      ],
+      cards:[
+        { title:"Atardecer en Ipanema", time:"17:15",
+          what:"El primer contacto con Río. Reposeras en una barraca, caipi en mano y el sol cayendo detrás del Morro Dois Irmãos.",
+          how:"Caminando desde el alojamiento.",
+          tiktok:"atardecer playa Ipanema" },
+        { title:"Pedra do Sal", time:"20:30",
+          what:"Una vuelta tranqui por la cuna del samba carioca, en la Pequeña África, y de vuelta temprano para arrancar el viernes.",
+          how:"Uber desde Ipanema hasta el barrio de la Saúde.",
+          note:"La roda famosa es los lunes; el jueves puede no haber. Confirmar en el Instagram @rodadesambadapedradosal.",
+          tiktok:"Pedra do Sal roda de samba" },
+        { title:"Plan B: botecos cerca del alojamiento", time:"",
+          extra:[
+            ["Bar Astor (Ipanema)","Avenida Vieira Souto 110, frente a la playa entre Ipanema y Arpoador. Se llega caminando o en un Uber muy corto."],
+            ["Academia da Cachaça (Leblon)","Rua Conde Bernadotte 26. Muchas marcas de cachaça y caipirinhas de frutas, con mesas adentro y afuera."],
+            ["Jobi (Leblon)","Avenida Ataulfo de Paiva 1166. Boteco clásico desde 1956, famoso por el bolinho de bacalhau."],
+            ["Sugerencia","Combinar Academia da Cachaça y Jobi, que están cerca entre sí, y volver temprano a Ipanema."]
+          ] }
+      ] },
+    { id:"vie", chip:"Vie", date:"16", title:"Viernes 16 · Cristo y Pão de Açúcar", iso:"2026-10-16",
+      timeline:[
+        ["8:30","Cristo Redentor","Van oficial desde Paineiras"],
+        ["Mediodía","Almuerzo y descanso","Vuelta a Ipanema"],
+        ["~15:45","Pão de Açúcar","Teleférico al atardecer"],
+        ["Noche","Cena tranquila en Ipanema","A dormir temprano"]
+      ],
+      cards:[
+        { title:"Cristo Redentor", time:"8:30",
+          what:"La estatua sobre el Corcovado, con vista a toda la ciudad. Temprano hay menos gente y mejor visibilidad.",
+          how:"Uber hasta Paineiras y van oficial hasta arriba.",
+          note:"Entradas con horario.",
+          tiktok:"Cristo Redentor Rio de Janeiro" },
+        { title:"Pão de Açúcar", time:"15:45",
+          what:"Dos tramos de teleférico hasta la cima, con parada en el Morro da Urca, para ver caer el sol sobre la bahía.",
+          how:"Uber hasta la Praia Vermelha, en Urca.",
+          note:"Entradas online con horario para evitar la fila.",
+          tiktok:"Pao de Acucar bondinho atardecer" }
+      ] },
+    { id:"sab", chip:"Sáb", date:"17", title:"Sábado 17 · Playa, caipis y la noche grande", iso:"2026-10-17",
+      timeline:[
+        ["~9:30","Rocinha con guía local","Sin alcohol de por medio"],
+        ["Mediodía","Almuerzo en la playa","Barraca y caipis"],
+        ["~15:30","Bici por las playas","Paradas con caipi en quioscos"],
+        ["~17:30","Atardecer en la playa","Barraca y caipis"],
+        ["Noche","Lapa o Bosque Bar","Elegir una de las dos"]
+      ],
+      cards:[
+        { title:"Rocinha con guía local", time:"9:30",
+          what:"La favela más grande de Río, recorrida en moto con alguien del barrio. A la mañana y sin alcohol de por medio.",
+          how:"Con el operador del tour, no por cuenta propia en una app.",
+          note:"Reservar con anticipación un operador con buenas reseñas.",
+          tiktok:"tour Rocinha Rio de Janeiro" },
+        { title:"Bici por las playas", time:"15:30",
+          what:"Ciclovía plana por Ipanema, Leblon y Copacabana. Parada en el calçadão de ondas de Copacabana y caipi en un quiosco.",
+          how:"Bicis compartidas o alquiler en Ipanema. Monopatines eléctricos: confirmar disponibilidad allá.",          tiktok:"bici ciclovia Copacabana Ipanema" },
+        { title:"Atardecer con caipis", time:"17:30",
+          what:"La tarde termina en la arena: barraca, reposeras y caipis mientras baja el sol, antes de salir de noche.",
+          how:"Volviendo de la bici, en la playa de Ipanema.",          tiktok:"caipirinha praia Ipanema por do sol" },
+        { title:"Opción 1 · Gran noche en Lapa", time:"Noche",
+          what:"Los Arcos da Lapa, bares con samba en vivo y la noche más larga del viaje.",
+          how:"Uber ida y vuelta, puerta a puerta.",          tiktok:"Lapa Rio noche samba" },
+        { title:"Opción 2 · Bosque Bar", time:"Noche",
+          what:"Bar al aire libre dentro del Jockey Club, en la Gávea, con vista al Cristo, mesas largas y DJs hasta tarde. Más fiesta y más caro que un boteco.",
+          address:"Avenida Bartolomeu Mitre 1314, Gávea.",
+          how:"Uber corto desde Ipanema.",
+          note:"Abre de jueves a domingo. Ver la programación y si hay entradas en su Instagram.",
+          tiktok:"Bosque Bar Jockey Rio" }
+      ] },
+    { id:"dom", chip:"Dom", date:"18", title:"Domingo 18 · Vuelta", iso:"2026-10-18",
+      timeline:[
+        ["Mañana","Playa en Ipanema","O Copacabana en Uber"],
+        ["Mediodía","Almuerzo y check-out","Valijas listas"],
+        ["~13:00","Traslado al aeropuerto","2 a 3 horas de margen"],
+        ["16:45","Vuelo a Córdoba",""]
+      ],
+      cards:[] },
+    { id:"lluvia", chip:"☔ Si llueve", date:"", title:"Plan B · Si llueve (cualquier día)",
+      intro:"Con el museo, el almuerzo y el shopping ya alcanza para un día completo bajo techo.",
+      timeline:[
+        ["~10:00","Museu do Amanhã","Zona portuaria, todo bajo techo"],
+        ["~12:30","Almuerzo en la Confeitaria Colombo","Café histórico del Centro"],
+        ["~15:00","Tour por el Maracanã","Para los futboleros"],
+        ["~18:00","Shopping Leblon","Compras, cine y comida"],
+        ["Noche","Botecos de Leblon","Jobi o Academia da Cachaça"]
+      ],
+      cards:[
+        { title:"Museu do Amanhã", time:"10:00",
+          what:"Museo de ciencias en un edificio futurista frente a la bahía, en la zona portuaria. Al lado está el AquaRio, por si quieren sumar un acuario.",
+          how:"Uber desde Ipanema hasta la Praça Mauá.",
+          note:"Confirmar horarios y días de cierre antes de ir.",
+          tiktok:"Museu do Amanha Rio" },
+        { title:"Tour por el Maracanã", time:"15:00",
+          what:"Vestuarios, túnel y tribunas del estadio más famoso de Brasil.",
+          how:"Uber desde el Centro después del almuerzo.",
+          note:"Reservar el tour con anticipación.",
+          tiktok:"tour Maracana estadio" },
+        { title:"Shopping Leblon", time:"18:00",
+          what:"Compras, cine y patio de comidas a minutos de Ipanema, para cerrar el día sin mojarse.",
+          how:"Uber corto desde Ipanema o desde el Maracanã.",
+          note:"Todo en un mismo lugar.",
+          tiktok:"Shopping Leblon Rio" }
+      ] },
+    { id:"info", chip:"📋 Info", date:"", title:"Antes de viajar" }
+  ];
+
+  var PLAN_CHECKLIST = [
+    ["cristo","Cristo Redentor","entradas con horario para el viernes a las 8:30, con la van desde Paineiras."],
+    ["pao","Pão de Açúcar","entradas online con horario para el viernes a la tarde."],
+    ["rocinha","Tour por la Rocinha","operador con guía local y buenas reseñas, para el sábado a la mañana."],
+    ["traslado","Traslado del aeropuerto","van para 8 personas el jueves, o pedir 2 Uber XL al llegar."],
+    ["bosque","Bosque Bar","si eligen esa opción para el sábado, revisar programación y entradas."]
+  ];
+
+  var PLAN_NOTES = [
+    "Traslados para 8: 2 Uber XL o una van privada.",
+    "Los links de TikTok abren una búsqueda de cada lugar, no un video puntual.",
+    "Uber Moto en Río: su situación legal fue discutida; no contar con que funcione.",
+    "Horarios marcados con \"~\" son aproximados."
+  ];
+
+  // Durante el viaje abre directo en el día de hoy; antes, en el jueves.
+  var planSelectedDay = (function(){
+    var d = new Date();
+    var iso = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    for(var i = 0; i < PLAN_DAYS.length; i++){ if(PLAN_DAYS[i].iso === iso) return PLAN_DAYS[i].id; }
+    return "jue";
+  })();
+
+  function loadPlanChecks(){
+    try{ return JSON.parse(localStorage.getItem(PLAN_CHECKS_KEY) || "{}") || {}; }catch(e){ return {}; }
+  }
+
+  function renderPlan(){
+    var filter = document.getElementById("planDayFilter");
+    filter.innerHTML = PLAN_DAYS.map(function(d){
+      return '<button type="button" class="day-chip' + (d.id === planSelectedDay ? ' active' : '') + '" data-plan-day="' + d.id + '">' +
+        d.chip + (d.date ? '<span class="day-chip-date">' + d.date + '</span>' : '') + '</button>';
+    }).join("");
+
+    var day = PLAN_DAYS.filter(function(d){ return d.id === planSelectedDay; })[0];
+    var html = '<div class="plan-day-title">' + day.title + '</div>';
+
+    if(day.id === "info"){
+      var checks = loadPlanChecks();
+      html += '<div class="section" style="margin-top:0;"><div class="section-head"><div class="section-title">Qué reservar</div></div><div class="panel">' +
+        PLAN_CHECKLIST.map(function(c){
+          var done = !!checks[c[0]];
+          return '<label class="plan-check' + (done ? ' done' : '') + '"><input type="checkbox" data-plan-check="' + c[0] + '"' + (done ? ' checked' : '') + '>' +
+            '<span><strong>' + c[1] + ':</strong> ' + c[2] + '</span></label>';
+        }).join("") + '</div></div>';
+      html += '<div class="section"><div class="section-head"><div class="section-title">Notas</div></div><div class="panel">' +
+        PLAN_NOTES.map(function(n){ return '<div class="row"><div class="row-meta" style="margin:0; line-height:1.45;">' + n + '</div></div>'; }).join("") +
+        '</div></div>';
+      document.getElementById("planContent").innerHTML = html;
+      return;
+    }
+
+    if(day.intro) html += '<div class="plan-note">' + day.intro + '</div>';
+
+    html += '<div class="panel plan-timeline">' + day.timeline.map(function(t){
+      return '<div class="row"><div class="row-time">' + t[0] + '</div><div style="min-width:0;">' +
+        '<div class="row-name">' + t[1] + '</div>' + (t[2] ? '<div class="row-meta">' + t[2] + '</div>' : '') + '</div></div>';
+    }).join("") + '</div>';
+
+    if(day.cards.length){
+      html += '<div class="section"><div class="section-head"><div class="section-title">Detalle</div></div>' +
+        day.cards.map(function(c){
+          var body = '';
+          if(c.what) body += '<p><strong>Qué es:</strong> ' + c.what + '</p>';
+          if(c.address) body += '<p><strong>Dirección:</strong> ' + c.address + '</p>';
+          if(c.how) body += '<p><strong>Cómo llegar:</strong> ' + c.how + '</p>';
+          if(c.note) body += '<p><strong>Para tener en cuenta:</strong> ' + c.note + '</p>';
+          if(c.extra) body += c.extra.map(function(e){ return '<p><strong>' + e[0] + ':</strong> ' + e[1] + '</p>'; }).join("");
+          if(c.tiktok) body += '<a class="plan-link" href="' + TIKTOK + encodeURIComponent(c.tiktok) + '" target="_blank" rel="noopener">▶ Ver en TikTok</a>';
+          return '<div class="plan-card"><div class="plan-card-head"><div class="plan-card-title">' + c.title + '</div>' +
+            (c.time ? '<div class="plan-card-time">' + c.time + '</div>' : '') + '</div>' + body + '</div>';
+        }).join("") + '</div>';
+    }
+
+    document.getElementById("planContent").innerHTML = html;
   }
 
   // ---------------- Render: everything ----------------
@@ -2893,6 +3148,25 @@
     document.getElementById("btnOpenAddFab").addEventListener("click", function(){ openSheet("addSheet"); });
     document.getElementById("btnOpenQuickRound").addEventListener("click", function(){ openSheet("quickSheet"); });
     document.querySelector('[data-tab="home-gallery-link"]').addEventListener("click", function(){ switchTab("gallery"); });
+    document.querySelectorAll("#rankStatsToggle [data-subtab]").forEach(function(btn){
+      btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-subtab")); });
+    });
+
+    // Plan: cambiar de día y tildar reservas
+    document.getElementById("planDayFilter").addEventListener("click", function(e){
+      var chip = e.target.closest("[data-plan-day]");
+      if(!chip) return;
+      planSelectedDay = chip.getAttribute("data-plan-day");
+      renderPlan();
+    });
+    document.getElementById("planContent").addEventListener("change", function(e){
+      var key = e.target.getAttribute("data-plan-check");
+      if(!key) return;
+      var checks = loadPlanChecks();
+      checks[key] = e.target.checked;
+      try{ localStorage.setItem(PLAN_CHECKS_KEY, JSON.stringify(checks)); }catch(err){}
+      e.target.closest(".plan-check").classList.toggle("done", e.target.checked);
+    });
 
     // Selector de moneda (solo cambia cómo se muestra; se carga siempre en reales)
     document.querySelectorAll("[data-currency]").forEach(function(btn){
