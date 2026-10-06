@@ -434,6 +434,36 @@
     font-size:11.5px; font-weight:600; color:var(--blue); background:var(--blue-tint);
     padding:4px 10px; border-radius:20px;
   }
+  /* Navegación del plan: todo a la vista, sin deslizar.
+     Arriba los 4 días como un calendario; abajo los dos extras, que no son días. */
+  .plan-days{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+  .plan-day{
+    position:relative; background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--radius-sm); padding:8px 0 9px 0; text-align:center; color:var(--ink);
+  }
+  .plan-day-dow{ display:block; font-size:11px; font-weight:600; color:var(--ink-soft); }
+  .plan-day-num{ display:block; font-family:'Space Grotesk'; font-weight:700; font-size:20px; line-height:1.15; }
+  .plan-day-today{
+    position:absolute; top:-7px; left:50%; transform:translateX(-50%);
+    background:var(--gold-bright); color:var(--ink); font-size:9px; font-weight:800;
+    padding:1px 6px; border-radius:8px; letter-spacing:0.3px;
+  }
+  .plan-day.active{ background:var(--grad-fab); border-color:transparent; color:#fff; box-shadow:0 4px 12px -4px rgba(8,81,47,0.55); }
+  .plan-day.active .plan-day-dow{ color:rgba(255,255,255,0.8); }
+
+  .plan-extras{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0 18px 0; }
+  .plan-extra{
+    display:flex; align-items:center; gap:9px; text-align:left;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm);
+    padding:9px 10px; color:var(--ink);
+  }
+  .plan-extra-icon{ font-size:18px; flex-shrink:0; }
+  .plan-extra-label{ display:block; font-size:12.5px; font-weight:700; }
+  .plan-extra-sub{ display:block; font-size:10.5px; font-weight:600; color:var(--ink-soft); margin-top:1px; }
+  .plan-extra.pending .plan-extra-sub{ color:#9A6D00; }
+  .plan-extra.complete .plan-extra-sub{ color:var(--green); }
+  .plan-extra.active{ border-color:var(--green); background:var(--green-tint); box-shadow:inset 0 0 0 1px var(--green); }
+
   .plan-day-title{ font-family:'Space Grotesk'; font-weight:700; font-size:16px; margin-bottom:10px; }
   .plan-timeline .row-time{ width:62px; font-size:12px; font-weight:700; color:var(--green); }
   .plan-timeline .row{ justify-content:flex-start; }
@@ -1048,7 +1078,7 @@
       <span>✈️ Vuelta dom 16:45</span>
       <span>🏨 Ipanema</span>
     </div>
-    <div class="day-filter" id="planDayFilter"></div>
+    <div id="planDayFilter"></div>
     <div id="planContent"></div>
   </main>
 
@@ -1904,8 +1934,7 @@
 
   // Durante el viaje abre directo en el día de hoy; antes, en el jueves.
   var planSelectedDay = (function(){
-    var d = new Date();
-    var iso = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    var iso = todayIso();
     for(var i = 0; i < PLAN_DAYS.length; i++){ if(PLAN_DAYS[i].iso === iso) return PLAN_DAYS[i].id; }
     return "jue";
   })();
@@ -1914,12 +1943,37 @@
     try{ return JSON.parse(localStorage.getItem(PLAN_CHECKS_KEY) || "{}") || {}; }catch(e){ return {}; }
   }
 
+  function todayIso(){
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+
+  function renderPlanNav(){
+    var today = todayIso();
+    var days = PLAN_DAYS.filter(function(d){ return d.iso; });
+    var checks = loadPlanChecks();
+    var done = PLAN_CHECKLIST.filter(function(c){ return checks[c[0]]; }).length;
+    var total = PLAN_CHECKLIST.length;
+
+    var html = '<div class="plan-days">' + days.map(function(d){
+      return '<button type="button" class="plan-day' + (d.id === planSelectedDay ? ' active' : '') + '" data-plan-day="' + d.id + '">' +
+        (d.iso === today ? '<span class="plan-day-today">HOY</span>' : '') +
+        '<span class="plan-day-dow">' + d.chip + '</span><span class="plan-day-num">' + d.date + '</span></button>';
+    }).join("") + '</div>';
+
+    html += '<div class="plan-extras">' +
+      '<button type="button" class="plan-extra' + (planSelectedDay === "lluvia" ? ' active' : '') + '" data-plan-day="lluvia">' +
+        '<span class="plan-extra-icon">☔</span><span><span class="plan-extra-label">Si llueve</span><span class="plan-extra-sub">Plan bajo techo</span></span></button>' +
+      '<button type="button" class="plan-extra ' + (done === total ? 'complete' : 'pending') + (planSelectedDay === "info" ? ' active' : '') + '" data-plan-day="info">' +
+        '<span class="plan-extra-icon">📋</span><span><span class="plan-extra-label">Reservas</span><span class="plan-extra-sub">' +
+        (done === total ? '✓ Todo reservado' : done + ' de ' + total + ' listas') + '</span></span></button>' +
+      '</div>';
+
+    document.getElementById("planDayFilter").innerHTML = html;
+  }
+
   function renderPlan(){
-    var filter = document.getElementById("planDayFilter");
-    filter.innerHTML = PLAN_DAYS.map(function(d){
-      return '<button type="button" class="day-chip' + (d.id === planSelectedDay ? ' active' : '') + '" data-plan-day="' + d.id + '">' +
-        d.chip + (d.date ? '<span class="day-chip-date">' + d.date + '</span>' : '') + '</button>';
-    }).join("");
+    renderPlanNav();
 
     var day = PLAN_DAYS.filter(function(d){ return d.id === planSelectedDay; })[0];
     var html = '<div class="plan-day-title">' + day.title + '</div>';
@@ -3166,6 +3220,7 @@
       checks[key] = e.target.checked;
       try{ localStorage.setItem(PLAN_CHECKS_KEY, JSON.stringify(checks)); }catch(err){}
       e.target.closest(".plan-check").classList.toggle("done", e.target.checked);
+      renderPlanNav();   // actualiza el "x de 5 listas" del botón Reservas
     });
 
     // Selector de moneda (solo cambia cómo se muestra; se carga siempre en reales)
