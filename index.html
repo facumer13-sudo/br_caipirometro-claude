@@ -697,6 +697,31 @@
     color:#fff; font-size:10px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
 
+  /* 📝 arriba a la izquierda: la foto tiene anécdota para leer */
+  .note-btn{
+    position:absolute; left:5px; top:5px;
+    width:28px; height:28px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,0.92); border:none; font-size:14px; line-height:1;
+    box-shadow:0 2px 6px rgba(8,14,10,0.35);
+  }
+  .note-btn:active{ transform:scale(0.9); }
+  .note-sheet-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .note-sheet-text{
+    margin-top:14px; padding:14px 16px; border-radius:var(--radius-md);
+    background:var(--gold-tint); border-left:3px solid var(--gold);
+    font-size:14.5px; line-height:1.55; color:var(--ink); white-space:pre-wrap; word-wrap:break-word;
+  }
+  .lightbox-note{
+    color:#fff; font-size:13.5px; line-height:1.45; text-align:center; max-width:420px;
+    background:rgba(255,255,255,0.12); padding:9px 14px; border-radius:14px;
+  }
+
+  /* lápiz para editar una ronda propia */
+  .entry-edit{ background:none; border:none; color:var(--ink-faint); width:26px; height:26px; display:flex; align-items:center; justify-content:center; }
+  .entry-edit svg{ width:15px; height:15px; }
+  .entry-edit:active, .entry-del:active{ color:var(--ink); }
+
   .like-btn{
     position:absolute; right:5px; bottom:5px;
     display:flex; align-items:center; gap:3px;
@@ -1112,7 +1137,7 @@
 <div class="sheet-backdrop" id="addSheet">
   <div class="sheet">
     <div class="sheet-head">
-      <div class="sheet-title">Anotar caipirinha</div>
+      <div class="sheet-title" id="addSheetTitle">Anotar caipirinha</div>
       <button type="button" class="sheet-close" data-close="addSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
 
@@ -1175,7 +1200,7 @@
         </div>
       </div>
 
-      <div class="field" style="margin-top:14px;">
+      <div class="field" style="margin-top:14px;" id="photoField">
         <label class="field-label">Foto (opcional)</label>
         <div class="photo-buttons" id="photoButtons">
           <button type="button" class="photo-btn" id="btnTakePhoto">
@@ -1203,7 +1228,7 @@
         <input type="text" id="formNote" placeholder="En el quiosque del posto 9…" class="input" />
       </div>
 
-      <button type="submit" class="btn-primary" style="margin-top:18px;">Confirmar</button>
+      <button type="submit" class="btn-primary" style="margin-top:18px;" id="caipiFormSubmit">Confirmar</button>
     </form>
   </div>
 </div>
@@ -1305,6 +1330,21 @@
   </div>
 </div>
 
+<!-- SHEET: LEER ANÉCDOTA -->
+<div class="sheet-backdrop" id="noteSheet">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="sheet-title">📝 Anécdota</div>
+        <div class="note-sheet-meta" id="noteSheetMeta"></div>
+      </div>
+      <button type="button" class="sheet-close" data-close="noteSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="note-sheet-text" id="noteSheetText"></div>
+    <button type="button" class="btn-secondary" id="btnNoteSeePhoto" style="margin-top:14px;">Ver la foto</button>
+  </div>
+</div>
+
 <div class="sheet-backdrop" id="confirmSheet">
   <div class="sheet">
     <div class="sheet-head">
@@ -1339,6 +1379,7 @@
   <img id="lightboxImg" class="lightbox-img" alt="Foto de la caipirinha" />
   <div class="lightbox-footer">
     <div class="lightbox-caption" id="lightboxCaption"></div>
+    <div class="lightbox-note hidden" id="lightboxNote"></div>
     <div class="lightbox-actions">
       <button type="button" class="lightbox-like" id="btnLightboxLike" data-action="toggle-like" data-id="">
         <span id="lightboxHeart"></span>
@@ -1766,6 +1807,8 @@
     var el = document.getElementById(id);
     if(el) el.classList.remove("open");
     if(id === "addSheet") clearPendingPhoto();
+    // Si se cierra a mitad de una edición, el formulario vuelve a quedar limpio
+    if(id === "addSheet" && editingLogId){ editingLogId = null; resetAddForm(); setAddSheetMode(false); }
   }
 
   function askConfirm(opts, onConfirm){
@@ -2195,9 +2238,14 @@
         '</div>' +
         '<div style="display:flex; align-items:center; gap:6px;">' +
           '<span class="row-time">' + formatTime(log.timestamp) + '</span>' +
-          '<button type="button" class="entry-del" data-action="delete-log" data-id="' + escapeHtml(log.id) + '" aria-label="Borrar registro">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0-.8 13.2A2 2 0 0 1 15.2 21H8.8a2 2 0 0 1-2-1.8L6 6"/></svg>' +
-          '</button>' +
+          (isMyLog(log)
+            ? '<button type="button" class="entry-edit" data-action="edit-log" data-id="' + escapeHtml(log.id) + '" aria-label="Editar ronda">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+              '</button>' +
+              '<button type="button" class="entry-del" data-action="delete-log" data-id="' + escapeHtml(log.id) + '" aria-label="Borrar registro">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0-.8 13.2A2 2 0 0 1 15.2 21H8.8a2 2 0 0 1-2-1.8L6 6"/></svg>' +
+              '</button>'
+            : '') +
         '</div>' +
       '</div>';
     });
@@ -2641,6 +2689,7 @@
       var mine = hasLiked(log.id);
       html += '<div class="gallery-tile" data-photo-src="' + escapeHtml(src) + '" data-photo-id="' + escapeHtml(log.id) + '">' +
         '<img src="' + escapeHtml(src) + '" alt="Foto de la caipirinha de ' + escapeHtml(log.friend) + '" loading="lazy" />' +
+        (log.note ? '<button type="button" class="note-btn" data-action="open-note" data-id="' + escapeHtml(log.id) + '" aria-label="Leer anécdota">📝</button>' : '') +
         '<div class="gallery-tile-meta">' + escapeHtml(log.friend) + '</div>' +
         '<button type="button" class="like-btn' + (mine ? ' liked' : '') + '" data-action="toggle-like" data-id="' + escapeHtml(log.id) + '" aria-label="Me gusta">' +
           heartSvg(mine) +
@@ -2685,6 +2734,7 @@
     var prevTotal = totalCaipis();
     entry.id = "log_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
     entry.timestamp = new Date().toISOString();
+    entry.by = deviceId;   // quién la anotó: solo ese celular la puede editar
 
     // La foto NO viaja dentro del log: se guarda aparte, indexada por el id.
     var photoDataUrl = entry.photo || null;
@@ -3105,9 +3155,14 @@
     if(caption){
       caption.textContent = log ? (log.friend + " · " + (log.city || log.placeType || "Río") + " · " + formatDate(log.timestamp)) : "";
     }
+    var noteEl = document.getElementById("lightboxNote");
+    if(noteEl){
+      noteEl.textContent = log && log.note ? "📝 " + log.note : "";
+      noteEl.classList.toggle("hidden", !(log && log.note));
+    }
     var delBtn = document.getElementById("btnDeleteLightboxPhoto");
     if(delBtn){
-      if(logId){ delBtn.setAttribute("data-id", logId); delBtn.classList.remove("hidden"); }
+      if(logId && isMyLog(log)){ delBtn.setAttribute("data-id", logId); delBtn.classList.remove("hidden"); }
       else { delBtn.classList.add("hidden"); }
     }
 
@@ -3137,6 +3192,87 @@
     if(heart) heart.innerHTML = heartSvg(mine);
     var cnt = document.getElementById("lightboxLikeCount");
     if(cnt) cnt.textContent = likeCount(id);
+  }
+
+  // ---------------- Anécdota (📝 de la galería) ----------------
+  function openNoteSheet(logId){
+    var log = state.logs.filter(function(l){ return l.id === logId; })[0];
+    if(!log || !log.note) return;
+    document.getElementById("noteSheetMeta").textContent = log.friend + " · " + (log.city || log.placeType || "Río") + " · " + formatDate(log.timestamp);
+    document.getElementById("noteSheetText").textContent = log.note;
+    document.getElementById("btnNoteSeePhoto").setAttribute("data-id", logId);
+    openSheet("noteSheet");
+  }
+
+  // ---------------- Editar una ronda propia ----------------
+  var editingLogId = null;
+
+  // Solo se puede editar lo que se anotó desde este mismo celular.
+  function isMyLog(log){
+    return !!(log && log.by && log.by === deviceId);
+  }
+
+  function setAddSheetMode(editing){
+    document.getElementById("addSheetTitle").textContent = editing ? "Editar ronda" : "Anotar caipirinha";
+    document.getElementById("caipiFormSubmit").textContent = editing ? "Guardar cambios" : "Confirmar";
+    // La foto no se cambia al editar: queda la que ya tenía la ronda.
+    document.getElementById("photoField").classList.toggle("hidden", editing);
+  }
+
+  function resetAddForm(){
+    document.getElementById("formQty").value = 1;
+    document.getElementById("formNote").value = "";
+    document.getElementById("formPrice").value = "";
+    document.getElementById("formCity").value = "";
+    var playa = document.querySelector('input[name="placeType"][value="Playa"]');
+    if(playa) playa.checked = true;
+    resetStars();
+    clearPendingPhoto();
+  }
+
+  function openAddSheet(){
+    if(editingLogId){ editingLogId = null; resetAddForm(); }
+    setAddSheetMode(false);
+    openSheet("addSheet");
+  }
+
+  function openEditSheet(logId){
+    var log = state.logs.filter(function(l){ return l.id === logId; })[0];
+    if(!isMyLog(log)){ showToast("Solo podés editar las rondas que anotaste vos"); return; }
+    editingLogId = logId;
+
+    var sel = document.getElementById("formFriendSelect");
+    if(sel){
+      // si el amigo ya no está en la lista, lo sumamos solo a este selector
+      if(state.friends.indexOf(log.friend) === -1){
+        var opt = document.createElement("option");
+        opt.value = log.friend; opt.textContent = log.friend;
+        sel.appendChild(opt);
+      }
+      sel.value = log.friend;
+    }
+    document.getElementById("formQty").value = log.qty || 1;
+    var place = document.querySelector('input[name="placeType"][value="' + (log.placeType || "Playa") + '"]');
+    if(place) place.checked = true;
+    document.getElementById("formCity").value = log.city || "";
+    document.getElementById("formPrice").value = (log.price === null || log.price === undefined) ? "" : log.price;
+    var r = Number(log.rating) || 3;
+    var star = document.querySelector('#starRow input[name="rating"][value="' + r + '"]');
+    if(star) star.checked = true;
+    paintStars(r);
+    document.getElementById("formNote").value = log.note || "";
+
+    setAddSheetMode(true);
+    openSheet("addSheet");
+  }
+
+  function saveEditedLog(fields){
+    var log = state.logs.filter(function(l){ return l.id === editingLogId; })[0];
+    if(!isMyLog(log)){ showToast("Solo podés editar las rondas que anotaste vos"); return false; }
+    Object.keys(fields).forEach(function(k){ log[k] = fields[k]; });
+    saveAndRender();
+    pushLogToFirebase(log);   // mismo id: pisa la versión vieja para todo el grupo
+    return true;
   }
 
   function closeLightbox(){
@@ -3198,8 +3334,8 @@
     document.querySelectorAll(".tab-btn[data-tab]").forEach(function(btn){
       btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });
     });
-    document.getElementById("btnOpenAdd").addEventListener("click", function(){ openSheet("addSheet"); });
-    document.getElementById("btnOpenAddFab").addEventListener("click", function(){ openSheet("addSheet"); });
+    document.getElementById("btnOpenAdd").addEventListener("click", openAddSheet);
+    document.getElementById("btnOpenAddFab").addEventListener("click", openAddSheet);
     document.getElementById("btnOpenQuickRound").addEventListener("click", function(){ openSheet("quickSheet"); });
     document.querySelector('[data-tab="home-gallery-link"]').addEventListener("click", function(){ switchTab("gallery"); });
     document.querySelectorAll("#rankStatsToggle [data-subtab]").forEach(function(btn){
@@ -3256,6 +3392,16 @@
       var note = document.getElementById("formNote").value.trim();
       var photo = pendingPhoto ? pendingPhoto.dataUrl : null;
 
+      if(editingLogId){
+        var saved = saveEditedLog({ friend:friend, qty:qty, placeType:placeType, city:city, price:price, rating:rating, note:note });
+        editingLogId = null;
+        closeSheet("addSheet");
+        resetAddForm();
+        setAddSheetMode(false);
+        if(saved) showToast("Ronda actualizada");
+        return;
+      }
+
       addLog({ friend:friend, qty:qty, placeType:placeType, city:city, price:price, rating:rating, note:note, photo:photo });
 
       closeSheet("addSheet");
@@ -3279,6 +3425,14 @@
     });
     document.getElementById("btnRemovePhoto").addEventListener("click", clearPendingPhoto);
 
+    // Anécdota: "Ver la foto" cierra la nota y abre la foto en grande
+    document.getElementById("btnNoteSeePhoto").addEventListener("click", function(){
+      var id = this.getAttribute("data-id");
+      var log = state.logs.filter(function(l){ return l.id === id; })[0];
+      closeSheet("noteSheet");
+      if(log) openLightbox(getPhotoFor(log), id);
+    });
+
     // Lightbox
     document.getElementById("btnCloseLightbox").addEventListener("click", closeLightbox);
     document.getElementById("photoLightbox").addEventListener("click", function(e){
@@ -3298,6 +3452,18 @@
           void fresh.offsetWidth;
           fresh.classList.add("pop");
         }
+        return;
+      }
+      // El 📝 también vive dentro del tile: abre la anécdota, no la foto.
+      var noteBtn = e.target.closest('[data-action="open-note"]');
+      if(noteBtn){
+        e.stopPropagation();
+        openNoteSheet(noteBtn.getAttribute("data-id"));
+        return;
+      }
+      var editBtn = e.target.closest('[data-action="edit-log"]');
+      if(editBtn){
+        openEditSheet(editBtn.getAttribute("data-id"));
         return;
       }
       var photoTrigger = e.target.closest("[data-photo-src]");
@@ -3401,6 +3567,8 @@
       if(delBtn){
         var id = delBtn.getAttribute("data-id");
         if(!id) return;
+        var target = state.logs.filter(function(l){ return l.id === id; })[0];
+        if(!isMyLog(target)){ showToast("Solo podés borrar las rondas que anotaste vos"); return; }
         askConfirm({
           title:"Borrar registro",
           message:"Esta caipirinha (y su foto, si tenía) se va a borrar del contador de todo el grupo.",
