@@ -1894,7 +1894,7 @@
 
   // ---------------- Plan: cronograma del viaje (sale de cronograma-rio-2026.md) ----------------
   var PLAN_CHECKS_KEY = "caipirometro_plan_checks";
-  var TIKTOK = "https://www.tiktok.com/search?q=";
+  var TIKTOK = "https://www.tiktok.com/tag/";   // los hashtags abren directo en la app; la búsqueda no
 
   var PLAN_DAYS = [
     { id:"jue", chip:"Jue", date:"15", title:"Jueves 15 · Llegada", iso:"2026-10-15",
@@ -1910,12 +1910,12 @@
         { title:"Atardecer en Ipanema", time:"17:15",
           what:"El primer contacto con Río. Reposeras en una barraca, caipi en mano y el sol cayendo detrás del Morro Dois Irmãos.",
           how:"Caminando desde el alojamiento.",
-          tiktok:"atardecer playa Ipanema" },
+          tiktok:"ipanema" },
         { title:"Pedra do Sal", time:"20:30",
           what:"Una vuelta tranqui por la cuna del samba carioca, en la Pequeña África, y de vuelta temprano para arrancar el viernes.",
           how:"Uber desde Ipanema hasta el barrio de la Saúde.",
           note:"La roda famosa es los lunes; el jueves puede no haber. Confirmar en el Instagram @rodadesambadapedradosal.",
-          tiktok:"Pedra do Sal roda de samba" },
+          tiktok:"pedradosal" },
         { title:"Plan B: botecos cerca del alojamiento", time:"",
           extra:[
             ["Bar Astor (Ipanema)","Avenida Vieira Souto 110, frente a la playa entre Ipanema y Arpoador. Se llega caminando o en un Uber muy corto."],
@@ -1936,12 +1936,12 @@
           what:"La estatua sobre el Corcovado, con vista a toda la ciudad. Temprano hay menos gente y mejor visibilidad.",
           how:"Uber hasta Paineiras y van oficial hasta arriba.",
           note:"Entradas con horario.",
-          tiktok:"Cristo Redentor Rio de Janeiro" },
+          tiktok:"cristoredentor" },
         { title:"Pão de Açúcar", time:"15:45",
           what:"Dos tramos de teleférico hasta la cima, con parada en el Morro da Urca, para ver caer el sol sobre la bahía.",
           how:"Uber hasta la Praia Vermelha, en Urca.",
           note:"Entradas online con horario para evitar la fila.",
-          tiktok:"Pao de Acucar bondinho atardecer" }
+          tiktok:"paodeacucar" }
       ] },
     { id:"sab", chip:"Sáb", date:"17", title:"Sábado 17 · Playa, caipis y la noche grande", iso:"2026-10-17",
       timeline:[
@@ -1956,22 +1956,22 @@
           what:"La favela más grande de Río, recorrida en moto con alguien del barrio. A la mañana y sin alcohol de por medio.",
           how:"Con el operador del tour, no por cuenta propia en una app.",
           note:"Reservar con anticipación un operador con buenas reseñas.",
-          tiktok:"tour Rocinha Rio de Janeiro" },
+          tiktok:"rocinha" },
         { title:"Bici por las playas", time:"15:30",
           what:"Ciclovía plana por Ipanema, Leblon y Copacabana. Parada en el calçadão de ondas de Copacabana y caipi en un quiosco.",
-          how:"Bicis compartidas o alquiler en Ipanema. Monopatines eléctricos: confirmar disponibilidad allá.",          tiktok:"bici ciclovia Copacabana Ipanema" },
+          how:"Bicis compartidas o alquiler en Ipanema. Monopatines eléctricos: confirmar disponibilidad allá.",          tiktok:"copacabana" },
         { title:"Atardecer con caipis", time:"17:30",
           what:"La tarde termina en la arena: barraca, reposeras y caipis mientras baja el sol, antes de salir de noche.",
-          how:"Volviendo de la bici, en la playa de Ipanema.",          tiktok:"caipirinha praia Ipanema por do sol" },
+          how:"Volviendo de la bici, en la playa de Ipanema.",          tiktok:"praiadeipanema" },
         { title:"Opción 1 · Gran noche en Lapa", time:"Noche",
           what:"Los Arcos da Lapa, bares con samba en vivo y la noche más larga del viaje.",
-          how:"Uber ida y vuelta, puerta a puerta.",          tiktok:"Lapa Rio noche samba" },
+          how:"Uber ida y vuelta, puerta a puerta.",          tiktok:"arcosdalapa" },
         { title:"Opción 2 · Bosque Bar", time:"Noche",
           what:"Bar al aire libre dentro del Jockey Club, en la Gávea, con vista al Cristo, mesas largas y DJs hasta tarde. Más fiesta y más caro que un boteco.",
           address:"Avenida Bartolomeu Mitre 1314, Gávea.",
           how:"Uber corto desde Ipanema.",
           note:"Abre de jueves a domingo. Ver la programación y si hay entradas en su Instagram.",
-          tiktok:"Bosque Bar Jockey Rio" }
+          tiktok:"bosquebar" }
       ] },
     { id:"dom", chip:"Dom", date:"18", title:"Domingo 18 · Vuelta", iso:"2026-10-18",
       timeline:[
@@ -1995,17 +1995,17 @@
           what:"Museo de ciencias en un edificio futurista frente a la bahía, en la zona portuaria. Al lado está el AquaRio, por si quieren sumar un acuario.",
           how:"Uber desde Ipanema hasta la Praça Mauá.",
           note:"Confirmar horarios y días de cierre antes de ir.",
-          tiktok:"Museu do Amanha Rio" },
+          tiktok:"museudoamanha" },
         { title:"Tour por el Maracanã", time:"15:00",
           what:"Vestuarios, túnel y tribunas del estadio más famoso de Brasil.",
           how:"Uber desde el Centro después del almuerzo.",
           note:"Reservar el tour con anticipación.",
-          tiktok:"tour Maracana estadio" },
+          tiktok:"maracana" },
         { title:"Shopping Leblon", time:"18:00",
           what:"Compras, cine y patio de comidas a minutos de Ipanema, para cerrar el día sin mojarse.",
           how:"Uber corto desde Ipanema o desde el Maracanã.",
           note:"Todo en un mismo lugar.",
-          tiktok:"Shopping Leblon Rio" }
+          tiktok:"leblon" }
       ] },
     { id:"info", chip:"📋 Info", date:"", title:"Antes de viajar" }
   ];
@@ -2020,7 +2020,7 @@
 
   var PLAN_NOTES = [
     "Traslados para 8: 2 Uber XL o una van privada.",
-    "Los links de TikTok abren una búsqueda de cada lugar, no un video puntual.",
+    "Los links de TikTok abren el hashtag de cada lugar, no un video puntual.",
     "Uber Moto en Río: su situación legal fue discutida; no contar con que funcione.",
     "Horarios marcados con \"~\" son aproximados."
   ];
@@ -2102,7 +2102,7 @@
           if(c.how) body += '<p><strong>Cómo llegar:</strong> ' + c.how + '</p>';
           if(c.note) body += '<p><strong>Para tener en cuenta:</strong> ' + c.note + '</p>';
           if(c.extra) body += c.extra.map(function(e){ return '<p><strong>' + e[0] + ':</strong> ' + e[1] + '</p>'; }).join("");
-          if(c.tiktok) body += '<a class="plan-link" href="' + TIKTOK + encodeURIComponent(c.tiktok) + '" target="_blank" rel="noopener">▶ Ver en TikTok</a>';
+          if(c.tiktok) body += '<a class="plan-link" href="' + TIKTOK + encodeURIComponent(c.tiktok) + '" target="_blank" rel="noopener">▶ Ver #' + c.tiktok + ' en TikTok</a>';
           return '<div class="plan-card"><div class="plan-card-head"><div class="plan-card-title">' + c.title + '</div>' +
             (c.time ? '<div class="plan-card-time">' + c.time + '</div>' : '') + '</div>' + body + '</div>';
         }).join("") + '</div>';
