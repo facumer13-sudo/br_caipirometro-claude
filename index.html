@@ -391,6 +391,31 @@
 
   .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 
+  /* ---------- Ronda grupal: elegir varios amigos ---------- */
+  .pick-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:2px; }
+  .pick{
+    position:relative; display:flex; flex-direction:column; align-items:center; gap:5px;
+    background:var(--surface-2); border:1.5px solid transparent; border-radius:var(--radius-sm);
+    padding:9px 2px 7px 2px; font-size:11px; font-weight:700; color:var(--ink-soft);
+  }
+  .pick-name{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 2px; }
+  .pick .avatar{ opacity:0.55; transition:opacity .12s ease; }
+  .pick.on{ background:var(--green-tint); border-color:var(--green); color:var(--green-deep); }
+  .pick.on .avatar{ opacity:1; }
+  .pick-check{
+    position:absolute; top:4px; right:4px; width:17px; height:17px; border-radius:50%;
+    background:var(--green); color:#fff; display:none; align-items:center; justify-content:center;
+  }
+  .pick-check svg{ width:10px; height:10px; }
+  .pick.on .pick-check{ display:flex; }
+
+  .split-summary{
+    margin:16px 0 12px 0; padding:12px 14px; border-radius:var(--radius-md);
+    background:var(--gold-tint); font-size:12.5px; color:var(--ink-soft); line-height:1.45; text-align:center;
+  }
+  .split-summary strong{ color:var(--ink); }
+  .split-summary .split-each{ display:block; font-family:'Space Grotesk'; font-size:19px; font-weight:700; color:var(--green-deep); margin-top:2px; }
+
   /* ---------- Avatares ---------- */
   .avatar{
     position:relative; display:inline-flex; align-items:center; justify-content:center;
@@ -964,7 +989,7 @@
       </button>
       <button type="button" class="btn-secondary" id="btnOpenQuickRound">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.1"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><path d="M16.5 5.4a3.1 3.1 0 0 1 0 5.6M18.4 14a6.5 6.5 0 0 1 3.1 5.5"/></svg>
-        <span>Ronda grupal rápida</span>
+        <span>Ronda grupal · dividir la cuenta</span>
       </button>
     </div>
 
@@ -1185,7 +1210,7 @@
         </div>
         <div class="field">
           <label class="field-label" for="formPrice">Precio (R$)</label>
-          <input type="number" id="formPrice" placeholder="20" min="0" class="input" style="color:var(--green-deep);" />
+          <input type="number" id="formPrice" placeholder="20" min="0" step="0.01" class="input" style="color:var(--green-deep);" />
         </div>
       </div>
 
@@ -1237,23 +1262,48 @@
 <div class="sheet-backdrop" id="quickSheet">
   <div class="sheet">
     <div class="sheet-head">
-      <div class="sheet-title">Ronda grupal rápida</div>
+      <div class="sheet-title">Ronda grupal</div>
       <button type="button" class="sheet-close" data-close="quickSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
-    <div class="field-label" style="font-weight:500; color:var(--ink-soft);">Para cuando alguien paga o pide varias de una. Queda anotado como Playa, sin precio ni notas — si te equivocás, la podés borrar desde el ícono del tachito en "Últimas rondas".</div>
-    <div class="field">
-      <label class="field-label" for="quickFriendSelect">¿Quién pidió la ronda?</label>
-      <select id="quickFriendSelect" class="select"></select>
+    <div class="field-label" style="font-weight:500; color:var(--ink-soft);">Para cuando se piden varias de una: cada uno suma sus caipis y el total se divide en partes iguales.</div>
+
+    <div class="field" style="margin-top:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline;">
+        <label class="field-label">¿Quiénes toman?</label>
+        <button type="button" class="section-link" id="btnQuickAll">Todos</button>
+      </div>
+      <div class="pick-grid" id="quickPickGrid"></div>
     </div>
-    <div class="field">
-      <label class="field-label">¿Cuántas caipirinhas en total?</label>
-      <div class="stepper">
-        <button type="button" class="step-btn" data-qty-quick="-1">–</button>
-        <input type="number" id="quickQty" class="step-val" value="4" min="1" max="40" />
-        <button type="button" class="step-btn" data-qty-quick="1">+</button>
+
+    <div class="grid-2" style="margin-top:14px; align-items:end;">
+      <div class="field">
+        <label class="field-label">Caipis por persona</label>
+        <div class="stepper" style="gap:6px;">
+          <button type="button" class="step-btn" data-qty-quick="-1" style="width:38px;">–</button>
+          <input type="number" id="quickQty" class="step-val" value="1" min="1" max="10" style="width:46px;" />
+          <button type="button" class="step-btn" data-qty-quick="1" style="width:38px;">+</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="quickTotal">Total pagado (R$)</label>
+        <input type="number" id="quickTotal" placeholder="100" min="0" step="0.01" class="input" style="color:var(--green-deep);" inputmode="decimal" />
       </div>
     </div>
-    <button type="button" class="btn-primary" id="btnConfirmQuick">Sumar a la cuenta</button>
+
+    <div class="field" style="margin-top:14px;">
+      <label class="field-label">¿Dónde?</label>
+      <div class="chip-grid">
+        <label class="chip-option"><input type="radio" name="quickPlace" value="Playa" checked /><div class="chip">🏖️ Playa</div></label>
+        <label class="chip-option"><input type="radio" name="quickPlace" value="Boliche / Fiesta" /><div class="chip">🪩 Boliche</div></label>
+        <label class="chip-option"><input type="radio" name="quickPlace" value="Restó / Bar" /><div class="chip">🍽️ Restó</div></label>
+        <label class="chip-option"><input type="radio" name="quickPlace" value="Calle / Quiosque" /><div class="chip">🥥 Quiosque</div></label>
+        <label class="chip-option"><input type="radio" name="quickPlace" value="Alojamiento" /><div class="chip">🏠 Alojam.</div></label>
+        <label class="chip-option"><input type="radio" name="quickPlace" value="Excursión" /><div class="chip">⛵ Excursión</div></label>
+      </div>
+    </div>
+
+    <div class="split-summary" id="quickSummary"></div>
+    <button type="button" class="btn-primary" id="btnConfirmQuick">Sumar ronda</button>
   </div>
 </div>
 
@@ -2706,7 +2756,7 @@
   }
 
   function renderFriendSelectors(){
-    ["formFriendSelect","quickFriendSelect"].forEach(function(id){
+    ["formFriendSelect"].forEach(function(id){
       var sel = document.getElementById(id);
       if(!sel) return;
       var prev = sel.value;
@@ -3204,6 +3254,64 @@
     openSheet("noteSheet");
   }
 
+  // ---------------- Ronda grupal ----------------
+  var quickSelected = [];
+
+  function openQuickSheet(){
+    quickSelected = [];
+    document.getElementById("quickQty").value = 1;
+    document.getElementById("quickTotal").value = "";
+    var playa = document.querySelector('input[name="quickPlace"][value="Playa"]');
+    if(playa) playa.checked = true;
+    renderQuickPicks();
+    openSheet("quickSheet");
+  }
+
+  function renderQuickPicks(){
+    // por si alguien fue quitado de la lista mientras la hoja estaba abierta
+    quickSelected = quickSelected.filter(function(n){ return state.friends.indexOf(n) !== -1; });
+    document.getElementById("quickPickGrid").innerHTML = state.friends.map(function(f){
+      var on = quickSelected.indexOf(f) !== -1;
+      return '<button type="button" class="pick' + (on ? ' on' : '') + '" data-pick="' + escapeHtml(f) + '" aria-pressed="' + on + '">' +
+        '<span class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>' +
+        avatarHtml(f, "sm") + '<span class="pick-name">' + escapeHtml(f) + '</span></button>';
+    }).join("");
+    var allBtn = document.getElementById("btnQuickAll");
+    if(allBtn) allBtn.textContent = (state.friends.length && quickSelected.length === state.friends.length) ? "Ninguno" : "Todos";
+    renderQuickSummary();
+  }
+
+  // El total se carga en reales: lo mostramos siempre en reales, aunque la app esté en dólares.
+  function brl(n){
+    return "R$ " + Number(n).toLocaleString("es-AR", { maximumFractionDigits:2 });
+  }
+
+  function quickSplit(){
+    var qty = Math.min(10, Math.max(1, parseInt(document.getElementById("quickQty").value, 10) || 1));
+    var totalVal = document.getElementById("quickTotal").value;
+    var total = totalVal ? Number(totalVal) : null;
+    var n = quickSelected.length;
+    // redondeo a centavos: R$ 100 entre 3 = R$ 33,33 c/u
+    var each = (total && n) ? Math.round(total / n * 100) / 100 : null;
+    return { people:quickSelected.slice(), qty:qty, total:total, each:each };
+  }
+
+  function renderQuickSummary(){
+    var s = quickSplit();
+    var el = document.getElementById("quickSummary");
+    var btn = document.getElementById("btnConfirmQuick");
+    var n = s.people.length;
+    if(n === 0){
+      el.innerHTML = "Tocá a los que toman en esta ronda.";
+      btn.textContent = "Sumar ronda";
+      return;
+    }
+    var caipis = s.qty * n;
+    el.innerHTML = '<strong>' + n + (n === 1 ? ' persona' : ' personas') + '</strong> · ' + caipis + (caipis === 1 ? ' caipi' : ' caipis') +
+      (s.total ? ' · total ' + brl(s.total) + '<span class="split-each">' + brl(s.each) + ' cada uno</span>' : '<br>Sin precio: cargá el total para dividirlo.');
+    btn.textContent = "Sumar ronda (" + caipis + (caipis === 1 ? " caipi)" : " caipis)");
+  }
+
   // ---------------- Editar una ronda propia ----------------
   var editingLogId = null;
 
@@ -3336,7 +3444,7 @@
     });
     document.getElementById("btnOpenAdd").addEventListener("click", openAddSheet);
     document.getElementById("btnOpenAddFab").addEventListener("click", openAddSheet);
-    document.getElementById("btnOpenQuickRound").addEventListener("click", function(){ openSheet("quickSheet"); });
+    document.getElementById("btnOpenQuickRound").addEventListener("click", openQuickSheet);
     document.querySelector('[data-tab="home-gallery-link"]').addEventListener("click", function(){ switchTab("gallery"); });
     document.querySelectorAll("#rankStatsToggle [data-subtab]").forEach(function(btn){
       btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-subtab")); });
@@ -3485,23 +3593,44 @@
       radio.addEventListener("change", function(){ paintStars(Number(radio.value)); });
     });
 
-    // Quick round
+    // Ronda grupal: varios amigos, el total se divide en partes iguales
     document.querySelectorAll("[data-qty-quick]").forEach(function(btn){
       btn.addEventListener("click", function(){
         var el = document.getElementById("quickQty");
         var delta = parseInt(btn.getAttribute("data-qty-quick"), 10);
         var val = (parseInt(el.value,10) || 1) + delta;
-        el.value = Math.min(40, Math.max(1, val));
+        el.value = Math.min(10, Math.max(1, val));
+        renderQuickSummary();
       });
     });
+    document.getElementById("quickQty").addEventListener("input", renderQuickSummary);
+    document.getElementById("quickTotal").addEventListener("input", renderQuickSummary);
+    document.getElementById("quickPickGrid").addEventListener("click", function(e){
+      var pick = e.target.closest("[data-pick]");
+      if(!pick) return;
+      var name = pick.getAttribute("data-pick");
+      var i = quickSelected.indexOf(name);
+      if(i === -1) quickSelected.push(name); else quickSelected.splice(i, 1);
+      renderQuickPicks();
+    });
+    document.getElementById("btnQuickAll").addEventListener("click", function(){
+      // si ya están todos, el mismo botón los desmarca
+      quickSelected = quickSelected.length === state.friends.length ? [] : state.friends.slice();
+      renderQuickPicks();
+    });
     document.getElementById("btnConfirmQuick").addEventListener("click", function(){
-      var friendEl = document.getElementById("quickFriendSelect");
-      var friend = friendEl && friendEl.value ? friendEl.value : state.friends[0];
-      if(!friend){ showToast("Agregá al menos un amigo primero"); return; }
-      var qty = parseInt(document.getElementById("quickQty").value, 10) || 1;
-      addLog({ friend:friend, qty:qty, placeType:"Playa", city:"", price:null, rating:"5", note:"Ronda grupal rápida" });
+      var s = quickSplit();
+      if(s.people.length === 0){ showToast("Elegí al menos a uno"); return; }
+      var placeInput = document.querySelector('input[name="quickPlace"]:checked');
+      var placeType = placeInput ? placeInput.value : "Playa";
+      var note = s.total
+        ? "Ronda grupal: " + brl(s.total) + " entre " + s.people.length
+        : "Ronda grupal";
+      s.people.forEach(function(friend){
+        addLog({ friend:friend, qty:s.qty, placeType:placeType, city:"", price:s.each, rating:"5", note:note });
+      });
       closeSheet("quickSheet");
-      showToast("¡Ronda sumada!");
+      showToast("¡Ronda sumada! " + (s.qty * s.people.length) + " caipis");
     });
 
     // Add friend sheet
