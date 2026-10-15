@@ -1456,6 +1456,9 @@
   // Así dos amigos que tocan el corazón al mismo tiempo no se pisan (cada uno
   // escribe una llave distinta) y el número sale de contar las marcas.
   var LIKES_KEY = "caipirometro_rio_likes_v1";
+  // Marca de "último reinicio" visto por ESTE celular. Sirve para que, cuando
+  // alguien reinicia el contador, los demás no vuelvan a subir sus rondas viejas.
+  var RESET_KEY = "caipirometro_rio_reset_v1";
   var DEVICE_KEY = "caipirometro_rio_device_v1";
 
   // 👉 Pegá acá la URL de tu Firebase Realtime Database antes de deployar a Vercel.
@@ -1494,6 +1497,7 @@
   var localPhotos = {};    // { logId: dataUrl } — fotos guardadas en ESTE celular
   var likesData = {};      // { logId: { deviceId: true } }
   var deviceId = "";       // id anónimo de este celular (solo para contar likes)
+  var lastResetAt = "";    // marca de reinicio ya aplicada en este celular
 
   // Firebase sync runtime vars
   var fbBase = "";               // normalized DB root, e.g. "https://x.firebaseio.com/"
@@ -1518,6 +1522,7 @@
     loadLocalPhotos();
     initDeviceId();
     loadLocalLikes();
+    try{ lastResetAt = localStorage.getItem(RESET_KEY) || ""; }catch(err){ lastResetAt = ""; }
 
     // Migración: si venís de una versión anterior donde la foto vivía adentro
     // del log, la movemos al almacén separado para que no se pierda.
@@ -2902,11 +2907,15 @@
     Promise.all([
       fetch(fbBase + "viaje/logs.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
       fetch(fbBase + "viaje/friends.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
-      fetch(fbBase + "viaje/likes.json").then(function(r){ return r.json(); }).catch(function(){ return null; })
+      fetch(fbBase + "viaje/likes.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      fetch(fbBase + "viaje/resetAt.json").then(function(r){ return r.json(); }).catch(function(){ return null; })
     ]).then(function(results){
       var remoteLogs = results[0];
       var remoteFriends = results[1];
       var remoteLikes = results[2];
+      // primero el reinicio: si el grupo reinició, lo viejo local se descarta
+      // ANTES de intentar subirlo de vuelta.
+      applyRemoteReset(results[3]);
       mergeRemoteLogs(remoteLogs, true /* push local-only logs up */);
       mergeRemoteFriends(remoteFriends, true /* push local friends up if remote is empty */);
       mergeRemoteLikes(remoteLikes);
@@ -2961,7 +2970,17 @@
     // Red de seguridad: si el stream se corta silenciosamente (común cuando el
     // celular pasa a segundo plano), esto lo compensa cada 20s.
     if(fbFallbackPoll) clearInterval(fbFallbackPoll);
-    fbFallbackPoll = setInterval(function(){ refetchLogs(); refetchFriends(); refetchLikes(); }, 20000);
+    fbFallbackPoll = setInterval(function(){ refetchResetMarker(); refetchLogs(); refetchFriends(); refetchLikes(); }, 20000);
+  }
+
+  function refetchResetMarker(){
+    if(!fbBase) return;
+    fetch(fbBase + "viaje/resetAt.json").then(function(r){ return r.json(); }).then(function(marca){
+      if(applyRemoteReset(marca)){
+        renderAll();
+        showToast("El contador se reinició para todo el grupo");
+      }
+    }).catch(function(){});
   }
 
   function refetchLogs(){
@@ -2991,7 +3010,11 @@
       var remoteIds = {};
       remoteArr.forEach(function(l){ remoteIds[l.id] = true; });
       state.logs.forEach(function(l){
-        if(!remoteIds[l.id]) pushLogToFirebase(l);
+        if(remoteIds[l.id]) return;
+        // si la ronda es anterior al último reinicio del grupo, NO se sube:
+        // si no, el reinicio de uno se desharía apenas otro abre la app.
+        if(lastResetAt && l.timestamp && l.timestamp <= lastResetAt) return;
+        pushLogToFirebase(l);
       });
     }
 
@@ -3102,6 +3125,33 @@
   function clearRemoteLogs(){
     if(!fbBase) return;
     fetch(fbBase + "viaje/logs.json", { method:"DELETE" }).catch(function(){});
+  }
+
+  // Si en la nube hay una marca de reinicio más nueva que la que tiene este
+  // celular, se borra todo lo local (rondas, fotos y likes) y se guarda la marca.
+  // Devuelve true si se aplicó un reinicio.
+  function applyRemoteReset(remoteResetAt){
+    if(!remoteResetAt || typeof remoteResetAt !== "string") return false;
+    if(lastResetAt && remoteResetAt <= lastResetAt) return false;
+
+    lastResetAt = remoteResetAt;
+    try{ localStorage.setItem(RESET_KEY, lastResetAt); }catch(err){}
+
+    state.logs = state.logs.filter(function(l){
+      return l.timestamp && l.timestamp > remoteResetAt;
+    });
+    Object.keys(localPhotos).forEach(function(id){
+      var sigue = state.logs.some(function(l){ return l.id === id; });
+      if(!sigue) delete localPhotos[id];
+    });
+    Object.keys(likesData).forEach(function(id){
+      var sigue = state.logs.some(function(l){ return l.id === id; });
+      if(!sigue) delete likesData[id];
+    });
+    persistLocalPhotos();
+    persistLocalLikes();
+    persistState();
+    return true;
   }
 
   function clearRemoteLikes(){
@@ -3765,15 +3815,32 @@
           "También se borran las fotos y los likes. Los amigos de la lista se mantienen. Esta acción no se puede deshacer.",
         okLabel:"Reiniciar a cero"
       }, function(){
+        // Marca de reinicio: la leen los demás celulares y descartan lo viejo.
+        // Sin esto, el primero que abriera la app volvería a subir todo.
+        var marca = new Date().toISOString();
+        lastResetAt = marca;
+        try{ localStorage.setItem(RESET_KEY, marca); }catch(err){}
+
         state.logs = [];
         localPhotos = {};
         persistLocalPhotos();
         likesData = {};
         persistLocalLikes();
         saveAndRender();
-        clearRemoteLogs();
-        clearRemoteLikes();
-        showToast("Contador reiniciado");
+
+        if(fbBase){
+          fetch(fbBase + "viaje/resetAt.json", {
+            method:"PUT", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(marca)
+          }).then(function(){
+            clearRemoteLogs();
+            clearRemoteLikes();
+            showToast("Contador reiniciado para todo el grupo");
+          }).catch(function(){
+            showToast("Se reinició acá, pero no se pudo avisar al grupo");
+          });
+        } else {
+          showToast("Contador reiniciado");
+        }
       });
     });
 
