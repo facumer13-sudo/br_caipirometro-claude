@@ -476,13 +476,38 @@
   .plan-day.active{ background:var(--grad-fab); border-color:transparent; color:#fff; box-shadow:0 4px 12px -4px rgba(8,81,47,0.55); }
   .plan-day.active .plan-day-dow{ color:rgba(255,255,255,0.8); }
 
-  .plan-extras{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0 18px 0; }
+  .plan-extras{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin:6px 0 18px 0; }
   .plan-extra{
-    display:flex; align-items:center; gap:9px; text-align:left;
+    display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center;
     background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm);
-    padding:9px 10px; color:var(--ink);
+    padding:9px 4px 8px 4px; color:var(--ink); min-width:0;
   }
-  .plan-extra-icon{ font-size:18px; flex-shrink:0; }
+  .plan-extra-icon{ font-size:18px; flex-shrink:0; line-height:1.1; }
+  .plan-extra .plan-extra-label, .plan-extra .plan-extra-sub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+
+  /* ---------- Conversor de monedas ---------- */
+  .conv-panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:6px 14px; }
+  .conv-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .conv-row:last-child{ border-bottom:none; }
+  .conv-flag{ font-size:22px; flex-shrink:0; }
+  .conv-cur{ width:76px; flex-shrink:0; }
+  .conv-cur strong{ display:block; font-size:13px; }
+  .conv-cur span{ display:block; font-size:10.5px; color:var(--ink-soft); font-weight:600; }
+  .conv-input{
+    flex:1; min-width:0; text-align:right; background:var(--surface-2); border:1.5px solid transparent;
+    border-radius:var(--radius-sm); padding:10px 12px; font-family:'Space Grotesk'; font-size:19px; font-weight:700;
+    color:var(--ink); outline:none;
+  }
+  .conv-input:focus{ border-color:var(--green); background:var(--surface); color:var(--green-deep); }
+  .conv-quick{ display:flex; gap:6px; margin:10px 0 0 0; }
+  .conv-quick button{
+    flex:1; background:var(--surface); border:1px solid var(--line); border-radius:20px;
+    padding:7px 0; font-size:12px; font-weight:700; color:var(--ink-soft);
+  }
+  .conv-quick button:active{ background:var(--green-tint); color:var(--green-deep); }
+  .conv-rate-label{ font-size:12px; font-weight:700; color:var(--ink); margin:18px 0 6px 0; text-align:center; }
+  .conv-rates{ font-size:11.5px; color:var(--ink-soft); line-height:1.6; text-align:center; margin-top:10px; }
+  .conv-rates strong{ color:var(--ink); }
   .plan-extra-label{ display:block; font-size:12.5px; font-weight:700; }
   .plan-extra-sub{ display:block; font-size:10.5px; font-weight:600; color:var(--ink-soft); margin-top:1px; }
   .plan-extra.pending .plan-extra-sub{ color:#9A6D00; }
@@ -2012,6 +2037,7 @@
           note:"Todo en un mismo lugar.",
           tiktok:"leblon" }
       ] },
+    { id:"conv", chip:"💱 Conversor", date:"", title:"Conversor de monedas" },
     { id:"info", chip:"📋 Info", date:"", title:"Antes de viajar" }
   ];
 
@@ -2037,6 +2063,121 @@
     return "jue";
   })();
 
+  // ---------------- Conversor R$ / US$ / AR$ ----------------
+  // Reales↔dólares: la misma cotización que usa el resto de la app (brlToUsd).
+  // Dólares↔pesos: dolarapi.com, eligiendo qué dólar (tarjeta, blue o MEP).
+  var ARS_FX_KEY = "caipirometro_rio_fx_ars_v1";
+  var CONV_KIND_KEY = "caipirometro_rio_conv_kind_v1";
+  var ARS_KINDS = [
+    ["tarjeta", "Tarjeta", "si pagás con tarjeta argentina"],
+    ["blue", "Blue", "si cambiaste efectivo"],
+    ["bolsa", "MEP", "si pagás con dólares propios"]
+  ];
+  var arsRates = null;   // { tarjeta: 1995.5, blue: 1550, bolsa: 1539.7, at: ms }
+  var convKind = "tarjeta";
+  var convSrc = "BRL";   // la moneda que se escribió por última vez
+  var convAmount = null; // el número escrito, en esa moneda
+
+  (function loadConvCache(){
+    try{
+      var c = JSON.parse(localStorage.getItem(ARS_FX_KEY) || "null");
+      if(c && c.tarjeta) arsRates = c;
+      var k = localStorage.getItem(CONV_KIND_KEY);
+      if(k && ARS_KINDS.some(function(x){ return x[0] === k; })) convKind = k;
+    }catch(e){}
+  })();
+
+  function refreshArsRates(){
+    // cada 3 horas alcanza; sin señal se usa la última guardada
+    if(arsRates && arsRates.at && (Date.now() - arsRates.at) < 3*60*60*1000) return;
+    fetch("https://dolarapi.com/v1/dolares")
+      .then(function(r){ return r.json(); })
+      .then(function(list){
+        if(!Array.isArray(list)) return;
+        var next = { at:Date.now() };
+        list.forEach(function(d){ if(d && d.casa && typeof d.venta === "number") next[d.casa] = d.venta; });
+        if(!next.tarjeta && !next.blue) return;
+        arsRates = next;
+        try{ localStorage.setItem(ARS_FX_KEY, JSON.stringify(arsRates)); }catch(e){}
+        fillConv();
+      })
+      .catch(function(){});
+  }
+
+  function arsPerUsd(){ return arsRates ? arsRates[convKind] || null : null; }
+
+  // Acepta "1.500", "1500,50", "12.5" o "12,5" (formato argentino o con punto decimal).
+  function parseAmount(str){
+    var s = String(str || "").replace(/[^\d.,]/g, "");
+    if(!s) return null;
+    if(s.indexOf(",") !== -1) s = s.replace(/\./g, "").replace(",", ".");
+    else if((s.match(/\./g) || []).length > 1 || /\.\d{3}$/.test(s)) s = s.replace(/\./g, "");
+    var n = Number(s);
+    return isNaN(n) ? null : n;
+  }
+
+  function fmtAmount(n, cur){
+    if(n === null || isNaN(n)) return "";
+    var dec = cur === "ARS" ? (n >= 1000 ? 0 : 2) : 2;
+    return n.toLocaleString("es-AR", { minimumFractionDigits:0, maximumFractionDigits:dec });
+  }
+
+  // Pasa cualquier monto a las tres monedas. null si falta alguna cotización.
+  function convertAll(amount, src){
+    var usd;
+    if(src === "USD") usd = amount;
+    else if(src === "BRL") usd = brlToUsd ? amount * brlToUsd : null;
+    else usd = arsPerUsd() ? amount / arsPerUsd() : null;
+    return {
+      USD: usd,
+      BRL: (usd !== null && brlToUsd) ? usd / brlToUsd : null,
+      ARS: (usd !== null && arsPerUsd()) ? usd * arsPerUsd() : null
+    };
+  }
+
+  function convHtml(){
+    var rows = [["BRL","🇧🇷","R$","Reales"],["USD","🇺🇸","US$","Dólares"],["ARS","🇦🇷","AR$","Pesos"]];
+    var kind = ARS_KINDS.filter(function(k){ return k[0] === convKind; })[0];
+    return '<div class="conv-panel">' + rows.map(function(r){
+        return '<div class="conv-row"><span class="conv-flag">' + r[1] + '</span>' +
+          '<div class="conv-cur"><strong>' + r[2] + '</strong><span>' + r[3] + '</span></div>' +
+          '<input class="conv-input" type="text" inputmode="decimal" autocomplete="off" placeholder="0" data-conv="' + r[0] + '" aria-label="' + r[3] + '"></div>';
+      }).join("") + '</div>' +
+      '<div class="conv-quick">' + [10, 20, 50, 100, 200].map(function(v){
+        return '<button type="button" data-conv-quick="' + v + '">R$ ' + v + '</button>';
+      }).join("") + '</div>' +
+      '<div class="conv-rate-label">¿Qué dólar usar para los pesos?</div>' +
+      '<div class="currency-toggle" style="margin-top:0;">' + ARS_KINDS.map(function(k){
+        return '<button type="button" data-conv-kind="' + k[0] + '"' + (k[0] === convKind ? ' class="active"' : '') + '>' + k[1] + '</button>';
+      }).join("") + '</div>' +
+      '<div class="row-meta" style="text-align:center; margin-top:6px;">' + kind[1] + ': ' + kind[2] + '</div>' +
+      '<div class="conv-rates" id="convRates"></div>';
+  }
+
+  // Rellena las monedas que NO se están escribiendo (la que tiene el foco no se toca).
+  function fillConv(){
+    var inputs = document.querySelectorAll("[data-conv]");
+    if(!inputs.length) return;
+    var vals = convAmount === null ? null : convertAll(convAmount, convSrc);
+    inputs.forEach(function(inp){
+      var cur = inp.getAttribute("data-conv");
+      if(cur === convSrc && document.activeElement === inp) return;
+      inp.value = cur === convSrc ? fmtAmount(convAmount, cur) : (vals ? fmtAmount(vals[cur], cur) : "");
+    });
+
+    var info = document.getElementById("convRates");
+    if(!info) return;
+    var parts = [];
+    parts.push(brlToUsd ? '<strong>R$ 1 = US$ ' + brlToUsd.toLocaleString("es-AR", { maximumFractionDigits:4 }) + '</strong>' : 'Sin cotización del real todavía');
+    var ars = arsPerUsd();
+    var kindName = ARS_KINDS.filter(function(k){ return k[0] === convKind; })[0][1].toLowerCase();
+    parts.push(ars ? '<strong>US$ 1 = AR$ ' + fmtAmount(ars, "ARS") + '</strong> (dólar ' + kindName + ')' : 'Sin cotización del dólar ' + kindName + ' todavía');
+    if(brlToUsd && ars) parts.push('R$ 1 = AR$ ' + fmtAmount(brlToUsd * ars, "ARS"));
+    var when = arsRates && arsRates.at ? new Date(arsRates.at) : null;
+    if(when) parts.push('<span style="color:var(--ink-faint);">Pesos actualizados ' + String(when.getDate()).padStart(2,"0") + '/' + String(when.getMonth()+1).padStart(2,"0") + ' ' + String(when.getHours()).padStart(2,"0") + ':' + String(when.getMinutes()).padStart(2,"0") + '</span>');
+    info.innerHTML = parts.join('<br>');
+  }
+
   function loadPlanChecks(){
     try{ return JSON.parse(localStorage.getItem(PLAN_CHECKS_KEY) || "{}") || {}; }catch(e){ return {}; }
   }
@@ -2061,10 +2202,12 @@
 
     html += '<div class="plan-extras">' +
       '<button type="button" class="plan-extra' + (planSelectedDay === "lluvia" ? ' active' : '') + '" data-plan-day="lluvia">' +
-        '<span class="plan-extra-icon">☔</span><span><span class="plan-extra-label">Si llueve</span><span class="plan-extra-sub">Plan bajo techo</span></span></button>' +
+        '<span class="plan-extra-icon">☔</span><span class="plan-extra-label">Si llueve</span><span class="plan-extra-sub">Bajo techo</span></button>' +
+      '<button type="button" class="plan-extra' + (planSelectedDay === "conv" ? ' active' : '') + '" data-plan-day="conv">' +
+        '<span class="plan-extra-icon">💱</span><span class="plan-extra-label">Conversor</span><span class="plan-extra-sub">R$ · US$ · AR$</span></button>' +
       '<button type="button" class="plan-extra ' + (done === total ? 'complete' : 'pending') + (planSelectedDay === "info" ? ' active' : '') + '" data-plan-day="info">' +
-        '<span class="plan-extra-icon">📋</span><span><span class="plan-extra-label">Reservas</span><span class="plan-extra-sub">' +
-        (done === total ? '✓ Todo reservado' : done + ' de ' + total + ' listas') + '</span></span></button>' +
+        '<span class="plan-extra-icon">📋</span><span class="plan-extra-label">Reservas</span><span class="plan-extra-sub">' +
+        (done === total ? '✓ Todo listo' : done + ' de ' + total + ' listas') + '</span></button>' +
       '</div>';
 
     document.getElementById("planDayFilter").innerHTML = html;
@@ -2075,6 +2218,14 @@
 
     var day = PLAN_DAYS.filter(function(d){ return d.id === planSelectedDay; })[0];
     var html = '<div class="plan-day-title">' + day.title + '</div>';
+
+    if(day.id === "conv"){
+      document.getElementById("planContent").innerHTML = html + convHtml();
+      fillConv();
+      refreshArsRates();
+      refreshRate();
+      return;
+    }
 
     if(day.id === "info"){
       var checks = loadPlanChecks();
@@ -2260,6 +2411,7 @@
           try{ localStorage.setItem(FX_KEY, JSON.stringify({ rate:rate, at:Date.now() })); }catch(e){}
           syncCurrencyToggle();
           renderAll();
+          fillConv();   // si el conversor está abierto, que use la cotización nueva
         }
       })
       .catch(function(){ /* sin señal: se sigue usando la última guardada */ });
@@ -3515,6 +3667,35 @@
       try{ localStorage.setItem(PLAN_CHECKS_KEY, JSON.stringify(checks)); }catch(err){}
       e.target.closest(".plan-check").classList.toggle("done", e.target.checked);
       renderPlanNav();   // actualiza el "x de 5 listas" del botón Reservas
+    });
+
+    // Conversor: escribir en cualquier moneda actualiza las otras dos
+    var planContentEl = document.getElementById("planContent");
+    planContentEl.addEventListener("input", function(e){
+      var cur = e.target.getAttribute("data-conv");
+      if(!cur) return;
+      convSrc = cur;
+      convAmount = parseAmount(e.target.value);
+      fillConv();
+    });
+    // al salir del campo, también se le da formato al número escrito
+    planContentEl.addEventListener("focusout", function(e){
+      if(e.target.getAttribute("data-conv")) setTimeout(fillConv, 0);
+    });
+    planContentEl.addEventListener("click", function(e){
+      var quick = e.target.closest("[data-conv-quick]");
+      if(quick){
+        convSrc = "BRL";
+        convAmount = Number(quick.getAttribute("data-conv-quick"));
+        fillConv();
+        return;
+      }
+      var kind = e.target.closest("[data-conv-kind]");
+      if(kind){
+        convKind = kind.getAttribute("data-conv-kind");
+        try{ localStorage.setItem(CONV_KIND_KEY, convKind); }catch(err){}
+        renderPlan();   // redibuja el selector y recalcula con el dólar elegido
+      }
     });
 
     // Selector de moneda (solo cambia cómo se muestra; se carga siempre en reales)
